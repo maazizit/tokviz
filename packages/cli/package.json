@@ -1,0 +1,26 @@
+{
+  "name": "@tokviz/cli",
+  "version": "0.1.0",
+  "description": "TokViz CLI — init hooks, track tokens, view stats",
+  "license": "UNLICENSED",
+  "author": "Zahra Maaziz",
+  "type": "module",
+  "bin": {
+    "tokviz": "./dist/index.js"
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && chmod +x dist/index.js",
+    "dev": "tsx src/index.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --import tsx --test src/**/*.test.ts"
+  },
+  "dependencies": {
+    "@tokviz/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}
