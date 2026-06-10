@@ -34,7 +34,8 @@ export function buildRecommendations(
   if (events.length === 0) {
     recommendations.push({
       severity: 'action',
-      message: 'Aucun événement enregistré. Lance `tokviz doctor`, redémarre Cursor, puis refais une session Agent.',
+      message:
+        'Aucun événement enregistré. Lance `tokviz doctor`, reload VS Code, ouvre Copilot en mode Agent, puis demande une commande shell (ex. run git log --oneline -50).',
     });
     return recommendations;
   }
@@ -47,7 +48,7 @@ export function buildRecommendations(
     recommendations.push({
       severity: 'warning',
       message:
-        'Économie globale < 15 %. Vérifie les hooks avec `tokviz doctor` et redémarre Cursor après `tokviz init`.',
+        'Économie globale < 15 %. Vérifie les hooks avec `tokviz doctor`, reload VS Code, puis relance une commande shell via Copilot Agent.',
     });
   }
 

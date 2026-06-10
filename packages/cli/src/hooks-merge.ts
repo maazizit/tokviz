@@ -61,7 +61,7 @@ function writeHooks(path: string, data: HooksFile): void {
   writeFileSync(path, JSON.stringify(data, null, 2) + '\n', 'utf8');
 }
 
-function isTokvizHook(entry: HookEntry): boolean {
+function isTokvizHook(entry: { command: string }): boolean {
   return entry.command.includes(TOKVIZ_MARKER);
 }
 
@@ -117,6 +117,11 @@ export function cursorHooksPayload(agent: string): HooksFile {
   return {
     version: 1,
     hooks: {
+      afterChatCreated: [
+        {
+          hooks: [{ type: 'command', command: cmd }],
+        },
+      ],
       afterShellExecution: [
         {
           matcher: '*',
@@ -138,6 +143,7 @@ export function cursorHooksPayload(agent: string): HooksFile {
   };
 }
 
+/** @deprecated Cursor-style payload — use copilotVsCodeHooksPayload for VS Code Copilot */
 export function copilotHooksPayload(agent: string): HooksFile {
   const cmd = hookCommand(agent);
   return {
@@ -159,10 +165,60 @@ export function copilotHooksPayload(agent: string): HooksFile {
   };
 }
 
+export interface VsCodeHookCommand {
+  type: string;
+  command: string;
+  timeout?: number;
+}
+
+export interface VsCodeHooksFile {
+  hooks: Record<string, VsCodeHookCommand[]>;
+}
+
+export function copilotVsCodeHooksPayload(agent: string): VsCodeHooksFile {
+  const cmd = hookCommand(agent);
+  const entry = { type: 'command', command: cmd, timeout: 15 };
+  return {
+    hooks: {
+      PreToolUse: [entry],
+      PostToolUse: [entry],
+    },
+  };
+}
+
+export function mergeCopilotVsCodeHooks(
+  targetPath: string,
+  incoming: VsCodeHooksFile,
+): { path: string; merged: boolean } {
+  mkdirSync(dirname(targetPath), { recursive: true });
+  let existing: VsCodeHooksFile = { hooks: {} };
+  if (existsSync(targetPath)) {
+    try {
+      existing = JSON.parse(readFileSync(targetPath, 'utf8')) as VsCodeHooksFile;
+    } catch {
+      existing = { hooks: {} };
+    }
+  }
+
+  const merged: VsCodeHooksFile = { hooks: { ...existing.hooks } };
+  for (const [event, commands] of Object.entries(incoming.hooks)) {
+    const current = (merged.hooks[event] ?? []).filter((cmd) => !isTokvizHook(cmd));
+    merged.hooks[event] = [...current, ...commands];
+  }
+
+  writeFileSync(targetPath, `${JSON.stringify(merged, null, 2)}\n`, 'utf8');
+  return { path: targetPath, merged: true };
+}
+
 export function geminiHooksPayload(agent: string): HooksFile {
   const cmd = hookCommand(agent);
   return {
     hooks: {
+      onConversationStart: [
+        {
+          hooks: [{ type: 'command', command: cmd }],
+        },
+      ],
       BeforeTool: [
         {
           matcher: 'shell',

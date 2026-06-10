@@ -11,6 +11,7 @@
   "files": ["dist"],
   "scripts": {
     "build": "tsc -p tsconfig.json && chmod +x dist/index.js",
+    "bundle": "esbuild src/index.ts --bundle --platform=node --target=node20 --format=esm --outfile=dist/cli.bundle.mjs",
     "dev": "tsx src/index.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --import tsx --test src/**/*.test.ts"
@@ -20,6 +21,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
+    "esbuild": "^0.24.0",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0"
   }

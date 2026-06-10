@@ -18,9 +18,8 @@ export function runDoctor(): string {
     const p = pathFn();
     const hookScript = `${home}/hooks/${name}/hook.sh`;
     if (existsSync(p)) {
-      const content = existsSync(p) ? 'found' : 'missing';
-      const hasTokviz = existsSync(p) && readFileSync(p, 'utf8').includes('tokviz');
-      lines.push(hasTokviz ? `✔ ${name} hooks (${p})` : `⚠ ${name} hooks exist but no tokviz entry (${content})`);
+      const hasTokviz = readFileSync(p, 'utf8').includes('tokviz');
+      lines.push(hasTokviz ? `✔ ${name} hooks (${p})` : `⚠ ${name} hooks exist but no tokviz entry`);
     } else {
       lines.push(`○ ${name} hooks not installed`);
     }

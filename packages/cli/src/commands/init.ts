@@ -4,8 +4,9 @@ import { saveConfig } from '@tokviz/core';
 import {
   installHookScripts,
   mergeHooksFile,
+  mergeCopilotVsCodeHooks,
   cursorHooksPayload,
-  copilotHooksPayload,
+  copilotVsCodeHooksPayload,
   geminiHooksPayload,
 } from '../hooks-merge.js';
 import { cursorHooksPath, copilotHooksPath, geminiHooksPath, REPO_ROOT } from '../paths.js';
@@ -53,8 +54,22 @@ export function runInit(opts: InitOptions): { hooksPath: string; messages: strin
   switch (opts.agent) {
     case 'copilot':
       hooksPath = copilotHooksPath(opts.global);
-      payload = copilotHooksPayload(agentKey);
-      break;
+      mergeCopilotVsCodeHooks(hooksPath, copilotVsCodeHooksPayload(agentKey));
+      messages.push(`Hooks merged → ${hooksPath}`);
+      if (opts.enterprise || opts.trackOnly) {
+        saveConfig({
+          enterpriseMode: !!opts.enterprise,
+          noContentLog: !!opts.enterprise,
+          trackOnly: !!opts.trackOnly,
+        });
+        messages.push(
+          opts.enterprise
+            ? 'Enterprise mode: no content log, metrics only'
+            : 'Track-only mode: no shell compression',
+        );
+      }
+      messages.push(`Restart ${opts.agent} to activate hooks.`);
+      return { hooksPath, messages };
     case 'gemini':
       hooksPath = geminiHooksPath(opts.global);
       payload = geminiHooksPayload(agentKey);

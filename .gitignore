@@ -11,3 +11,4 @@ coverage/
 pnpm-lock.yaml
 rapports/
 *.json.bak
+.pnpm-store/

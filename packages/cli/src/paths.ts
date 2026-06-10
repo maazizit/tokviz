@@ -3,7 +3,9 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const TOKVIZ_HOME = join(homedir(), '.tokviz');
-export const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '../../..');
+export const REPO_ROOT =
+  process.env.TOKVIZ_REPO_ROOT ??
+  join(dirname(fileURLToPath(import.meta.url)), '../../..');
 
 export function cursorHooksPath(global: boolean): string {
   return global
@@ -13,8 +15,8 @@ export function cursorHooksPath(global: boolean): string {
 
 export function copilotHooksPath(global: boolean): string {
   return global
-    ? join(homedir(), '.copilot', 'hooks.json')
-    : join(process.cwd(), '.github', 'hooks', 'copilot-hooks.json');
+    ? join(homedir(), '.copilot', 'hooks', 'tokviz-tracker.json')
+    : join(process.cwd(), '.github', 'hooks', 'tokviz-tracker.json');
 }
 
 export function geminiHooksPath(global: boolean): string {

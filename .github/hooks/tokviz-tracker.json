@@ -1,0 +1,18 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "type": "command",
+        "command": "/Users/zahramaaziz/.tokviz/hooks/copilot/hook.sh",
+        "timeout": 15
+      }
+    ],
+    "PostToolUse": [
+      {
+        "type": "command",
+        "command": "/Users/zahramaaziz/.tokviz/hooks/copilot/hook.sh",
+        "timeout": 15
+      }
+    ]
+  }
+}
