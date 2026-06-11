@@ -18,3 +18,12 @@ export {
   listFixtureFiles,
 } from './bench.js';
 export type { BenchFixture, BenchRow, BenchReport, LiveCapture } from './bench.js';
+export {
+  redactSecrets,
+  shouldCompress,
+  isSensitiveCommand,
+  isSecurityCriticalLine,
+  looksLikeEnvFile,
+  looksLikeSecretMaterial,
+  collapseDiffBlock,
+} from './security.js';

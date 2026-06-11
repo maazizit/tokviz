@@ -1,8 +1,13 @@
 import { recordEvent } from './db.js';
 import { compressShellOutput } from './compressor/shell.js';
+import { detectCommandType } from './compressors.js';
 import { estimateTokens, redactSecrets } from './tokens.js';
 import type { Agent, EventSource } from './types.js';
 import { getConfig } from './db.js';
+
+function safeCommandLabel(command: string): string {
+  return redactSecrets(command).slice(0, 200);
+}
 
 export function trackShellOutput(input: {
   sessionId: string;
@@ -14,7 +19,8 @@ export function trackShellOutput(input: {
   const config = getConfig();
   const trackOnly = input.trackOnly ?? config.trackOnly;
   const safeOutput = redactSecrets(input.output);
-  const safeCommand = config.noContentLog ? '[redacted]' : input.command;
+  const safeCommand = safeCommandLabel(input.command);
+  const commandType = detectCommandType(input.command);
 
   if (trackOnly) {
     const tokens = estimateTokens(safeOutput);
@@ -26,6 +32,7 @@ export function trackShellOutput(input: {
       command: safeCommand,
       tokensRaw: tokens,
       tokensOptimized: tokens,
+      metadata: { commandType },
     });
     return { output: input.output, saved: 0 };
   }
@@ -39,7 +46,7 @@ export function trackShellOutput(input: {
     command: safeCommand,
     tokensRaw: result.tokensRaw,
     tokensOptimized: result.tokensOptimized,
-    metadata: { compressed: result.compressed },
+    metadata: { compressed: result.compressed, commandType },
   });
 
   return {

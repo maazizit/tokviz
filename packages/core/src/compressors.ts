@@ -1,4 +1,5 @@
 import { dedupeLines, removeNoise, truncateLines } from './noise.js';
+import { collapseDiffBlock } from './security.js';
 
 const MAX_GENERIC_LINES = 80;
 const MAX_LIST_LINES = 40;
@@ -156,12 +157,7 @@ function compressCustomGitDiff(output: string): string {
         block.push(lines[i].trimStart());
         i++;
       }
-      if (block.length > 5) {
-        result.push(block[0], block[1]);
-        result.push(`[tokviz] … ${block.length - 2} additions omitted`);
-      } else {
-        result.push(...block);
-      }
+      result.push(...collapseDiffBlock(block, 2, 'additions'));
       continue;
     }
     if (trimmed.startsWith('-')) {
@@ -170,12 +166,7 @@ function compressCustomGitDiff(output: string): string {
         block.push(lines[i].trimStart());
         i++;
       }
-      if (block.length > 4) {
-        result.push(block[0], block[1]);
-        result.push(`[tokviz] … ${block.length - 2} deletions omitted`);
-      } else {
-        result.push(...block);
-      }
+      result.push(...collapseDiffBlock(block, 2, 'deletions'));
       continue;
     }
     if (/^\+\d+ -\d+$/.test(trimmed)) {
@@ -218,12 +209,7 @@ function compressUnifiedGitDiff(output: string): string {
         block.push(lines[i].trimStart());
         i++;
       }
-      if (block.length > 5) {
-        result.push(block[0], block[1]);
-        result.push(`[tokviz] … ${block.length - 2} additions omitted`);
-      } else {
-        result.push(...block);
-      }
+      result.push(...collapseDiffBlock(block, 2, 'additions'));
       continue;
     }
 
@@ -233,12 +219,7 @@ function compressUnifiedGitDiff(output: string): string {
         block.push(lines[i].trimStart());
         i++;
       }
-      if (block.length > 4) {
-        result.push(block[0], block[1]);
-        result.push(`[tokviz] … ${block.length - 2} deletions omitted`);
-      } else {
-        result.push(...block);
-      }
+      result.push(...collapseDiffBlock(block, 2, 'deletions'));
       continue;
     }
 

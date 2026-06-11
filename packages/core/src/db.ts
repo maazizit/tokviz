@@ -79,7 +79,7 @@ export function recordEvent(input: {
     timestamp: new Date().toISOString(),
     source: input.source,
     toolName: input.toolName,
-    command: config.noContentLog ? undefined : input.command?.slice(0, 200),
+    command: input.command?.slice(0, 200),
     tokensRaw: input.tokensRaw,
     tokensOptimized: input.tokensOptimized,
     tokensSaved: Math.max(0, input.tokensRaw - input.tokensOptimized),
