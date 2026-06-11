@@ -1,6 +1,6 @@
 {
   "name": "tokviz",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Token usage tracker and shell output compressor for Cursor, Copilot, and Gemini CLI",
   "license": "UNLICENSED",

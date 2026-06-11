@@ -30,7 +30,8 @@ export function runGain(): string {
   if (top.length > 0) {
     lines.push('Top savings:');
     for (const [cmd, stats] of top) {
-      const pct = stats.raw > 0 ? Math.round((stats.saved / stats.raw) * 100) : 0;
+      const pct =
+        stats.raw > 0 ? Math.round((stats.saved / stats.raw) * 1000) / 10 : 0;
       lines.push(`  ${cmd.padEnd(16)} -${stats.saved.toLocaleString()} (${pct}%)`);
     }
   } else {
