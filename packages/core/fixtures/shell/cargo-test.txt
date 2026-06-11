@@ -1,0 +1,63 @@
+   Compiling tokviz-core v0.1.0 (/Users/dev/tok-viz/packages/core)
+    Finished test [unoptimized + debuginfo] target(s) in 2.41s
+     Running unittests src/lib.rs (target/debug/deps/tokviz_core-abc123)
+
+running 48 tests
+test compressors::detect_command_type ... ok
+test compressors::git_diff_filters_context ... ok
+test noise::strip_ansi ... ok
+test noise::dedupe_lines ... ok
+test tracker::records_shell_event ... ok
+test db::insert_event ... ok
+test report::build_summary ... ok
+test compare::session_diff ... ok
+test filters::parse_date_7d ... ok
+test tokens::estimate_empty ... ok
+test tokens::estimate_length ... ok
+test tokens::redact_api_key ... ok
+test analytics::rank_sessions ... ok
+test analytics::recommendations ... ok
+test compressors::cargo_summary_only ... ok
+test compressors::npm_failures ... ok
+test compressors::docker_timestamps ... ok
+test compressors::generic_truncate ... ok
+test compressors::fail_safe_empty ... ok
+test compressors::ratio_git_diff ... ok
+test compressors::ratio_cargo_test ... ok
+test compressors::ratio_docker_logs ... ok
+test shell::compress_git_diff ... ok
+test shell::pass_through_short ... ok
+test report::html_escape ... ok
+test report::markdown_sections ... ok
+test compare::agent_breakdown ... ok
+test compare::period_split ... ok
+test db::config_defaults ... ok
+test db::retention_prune ... ok
+test tracker::track_only_mode ... ok
+test tracker::compression_saved ... ok
+test recommendations::low_savings_warning ... ok
+test recommendations::top_commands ... ok
+test filters::agent_filter ... ok
+test filters::since_until ... ok
+test noise::progress_bar ... ok
+test noise::iso_timestamp ... ok
+test noise::log_level_strip ... ok
+test noise::pair_duplicates_kept ... ok
+test compressors::rg_detection ... ok
+test compressors::pnpm_test ... ok
+test compressors::pytest_detection ... ok
+test compressors::kubectl_get ... ok
+test compressors::ls_truncate ... ok
+test compressors::find_truncate ... ok
+test compressors::git_status_untracked_cap ... ok
+test compressors::git_log_no_dates ... ok
+
+test result: ok. 48 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.31s
+
+   Doc-tests tokviz-core
+
+running 2 tests
+test packages/core/src/lib.rs - readme_example (line 10) ... ok
+test packages/core/src/lib.rs - bench_usage (line 25) ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s

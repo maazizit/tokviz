@@ -23,11 +23,17 @@ describe('redactSecrets', () => {
 });
 
 describe('compressShellOutput', () => {
-  it('truncates long git diff', () => {
-    const lines = Array.from({ length: 200 }, (_, i) => `line ${i}`).join('\n');
-    const result = compressShellOutput('git diff', lines);
-    assert.ok(result.tokensOptimized <= result.tokensRaw);
-    assert.match(result.output, /truncated/);
+  it('compresses git diff by stripping context lines', () => {
+    const lines = Array.from({ length: 100 }, (_, i) => ` context ${i}`).concat(
+      '-removed',
+      '+added'
+    );
+    const raw = lines.join('\n');
+    const result = compressShellOutput('git diff', raw);
+    assert.ok(result.tokensOptimized < result.tokensRaw);
+    assert.ok(result.output.includes('-removed'));
+    assert.ok(result.output.includes('+added'));
+    assert.ok(!result.output.includes('context 0'));
   });
 
   it('passes through short output', () => {

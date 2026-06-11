@@ -1,0 +1,245 @@
+diff --git a/src/app.ts b/src/app.ts
+index 1111111..2222222 100644
+--- a/src/app.ts
++++ b/src/app.ts
+@@ -1,160 +1,161 @@
+ unchanged context line number 0
+ unchanged context line number 1
+ unchanged context line number 2
+ unchanged context line number 3
+ unchanged context line number 4
+ unchanged context line number 5
+ unchanged context line number 6
+ unchanged context line number 7
+ unchanged context line number 8
+ unchanged context line number 9
+ unchanged context line number 10
+ unchanged context line number 11
+ unchanged context line number 12
+ unchanged context line number 13
+ unchanged context line number 14
+ unchanged context line number 15
+ unchanged context line number 16
+ unchanged context line number 17
+ unchanged context line number 18
+ unchanged context line number 19
+ unchanged context line number 20
+ unchanged context line number 21
+ unchanged context line number 22
+ unchanged context line number 23
+ unchanged context line number 24
+ unchanged context line number 25
+ unchanged context line number 26
+ unchanged context line number 27
+ unchanged context line number 28
+ unchanged context line number 29
+ unchanged context line number 30
+ unchanged context line number 31
+ unchanged context line number 32
+ unchanged context line number 33
+ unchanged context line number 34
+ unchanged context line number 35
+ unchanged context line number 36
+ unchanged context line number 37
+ unchanged context line number 38
+ unchanged context line number 39
+ unchanged context line number 40
+ unchanged context line number 41
+ unchanged context line number 42
+ unchanged context line number 43
+ unchanged context line number 44
+ unchanged context line number 45
+ unchanged context line number 46
+ unchanged context line number 47
+ unchanged context line number 48
+ unchanged context line number 49
+ unchanged context line number 50
+ unchanged context line number 51
+ unchanged context line number 52
+ unchanged context line number 53
+ unchanged context line number 54
+ unchanged context line number 55
+ unchanged context line number 56
+ unchanged context line number 57
+ unchanged context line number 58
+ unchanged context line number 59
+ unchanged context line number 60
+ unchanged context line number 61
+ unchanged context line number 62
+ unchanged context line number 63
+ unchanged context line number 64
+ unchanged context line number 65
+ unchanged context line number 66
+ unchanged context line number 67
+ unchanged context line number 68
+ unchanged context line number 69
+ unchanged context line number 70
+ unchanged context line number 71
+ unchanged context line number 72
+ unchanged context line number 73
+ unchanged context line number 74
+ unchanged context line number 75
+ unchanged context line number 76
+ unchanged context line number 77
+ unchanged context line number 78
+ unchanged context line number 79
+ unchanged context line number 80
+ unchanged context line number 81
+ unchanged context line number 82
+ unchanged context line number 83
+ unchanged context line number 84
+ unchanged context line number 85
+ unchanged context line number 86
+ unchanged context line number 87
+ unchanged context line number 88
+ unchanged context line number 89
+ unchanged context line number 90
+ unchanged context line number 91
+ unchanged context line number 92
+ unchanged context line number 93
+ unchanged context line number 94
+ unchanged context line number 95
+ unchanged context line number 96
+ unchanged context line number 97
+ unchanged context line number 98
+ unchanged context line number 99
+ unchanged context line number 100
+ unchanged context line number 101
+ unchanged context line number 102
+ unchanged context line number 103
+ unchanged context line number 104
+ unchanged context line number 105
+ unchanged context line number 106
+ unchanged context line number 107
+ unchanged context line number 108
+ unchanged context line number 109
+ unchanged context line number 110
+ unchanged context line number 111
+ unchanged context line number 112
+ unchanged context line number 113
+ unchanged context line number 114
+ unchanged context line number 115
+ unchanged context line number 116
+ unchanged context line number 117
+ unchanged context line number 118
+ unchanged context line number 119
+ unchanged context line number 120
+ unchanged context line number 121
+ unchanged context line number 122
+ unchanged context line number 123
+ unchanged context line number 124
+ unchanged context line number 125
+ unchanged context line number 126
+ unchanged context line number 127
+ unchanged context line number 128
+ unchanged context line number 129
+ unchanged context line number 130
+ unchanged context line number 131
+ unchanged context line number 132
+ unchanged context line number 133
+ unchanged context line number 134
+ unchanged context line number 135
+ unchanged context line number 136
+ unchanged context line number 137
+ unchanged context line number 138
+ unchanged context line number 139
+ unchanged context line number 140
+ unchanged context line number 141
+ unchanged context line number 142
+ unchanged context line number 143
+ unchanged context line number 144
+ unchanged context line number 145
+ unchanged context line number 146
+ unchanged context line number 147
+ unchanged context line number 148
+ unchanged context line number 149
+-export const version = "0.1.0";
++export const version = "0.2.0";
++export const compression = "tokviz";
+diff --git a/src/util.ts b/src/util.ts
+index 3333333..4444444 100644
+--- a/src/util.ts
++++ b/src/util.ts
+@@ -10,50 +10,51 @@
+ helper line 0
+ helper line 1
+ helper line 2
+ helper line 3
+ helper line 4
+ helper line 5
+ helper line 6
+ helper line 7
+ helper line 8
+ helper line 9
+ helper line 10
+ helper line 11
+ helper line 12
+ helper line 13
+ helper line 14
+ helper line 15
+ helper line 16
+ helper line 17
+ helper line 18
+ helper line 19
+ helper line 20
+ helper line 21
+ helper line 22
+ helper line 23
+ helper line 24
+ helper line 25
+ helper line 26
+ helper line 27
+ helper line 28
+ helper line 29
+ helper line 30
+ helper line 31
+ helper line 32
+ helper line 33
+ helper line 34
+ helper line 35
+ helper line 36
+ helper line 37
+ helper line 38
+ helper line 39
+ helper line 40
+ helper line 41
+ helper line 42
+ helper line 43
+ helper line 44
+ helper line 45
+ helper line 46
+ helper line 47
+ helper line 48
+ helper line 49
+ helper line 50
+ helper line 51
+ helper line 52
+ helper line 53
+ helper line 54
+ helper line 55
+ helper line 56
+ helper line 57
+ helper line 58
+ helper line 59
+ helper line 60
+ helper line 61
+ helper line 62
+ helper line 63
+ helper line 64
+ helper line 65
+ helper line 66
+ helper line 67
+ helper line 68
+ helper line 69
+ helper line 70
+ helper line 71
+ helper line 72
+ helper line 73
+ helper line 74
+ helper line 75
+ helper line 76
+ helper line 77
+ helper line 78
+ helper line 79
+-function oldHelper() { return 1; }
++function newHelper() { return 2; }

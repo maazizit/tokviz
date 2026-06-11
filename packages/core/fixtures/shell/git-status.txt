@@ -1,0 +1,34 @@
+* main...origin/main
+ M packages/core/src/compressor/shell.ts
+ M packages/core/src/index.ts
+ M packages/cli/src/index.ts
+?? generated/untracked-file-0.ts
+?? generated/untracked-file-1.ts
+?? generated/untracked-file-2.ts
+?? generated/untracked-file-3.ts
+?? generated/untracked-file-4.ts
+?? generated/untracked-file-5.ts
+?? generated/untracked-file-6.ts
+?? generated/untracked-file-7.ts
+?? generated/untracked-file-8.ts
+?? generated/untracked-file-9.ts
+?? generated/untracked-file-10.ts
+?? generated/untracked-file-11.ts
+?? generated/untracked-file-12.ts
+?? generated/untracked-file-13.ts
+?? generated/untracked-file-14.ts
+?? generated/untracked-file-15.ts
+?? generated/untracked-file-16.ts
+?? generated/untracked-file-17.ts
+?? generated/untracked-file-18.ts
+?? generated/untracked-file-19.ts
+?? generated/untracked-file-20.ts
+?? generated/untracked-file-21.ts
+?? generated/untracked-file-22.ts
+?? generated/untracked-file-23.ts
+?? generated/untracked-file-24.ts
+?? generated/untracked-file-25.ts
+?? generated/untracked-file-26.ts
+?? generated/untracked-file-27.ts
+?? generated/untracked-file-28.ts
+?? generated/untracked-file-29.ts

@@ -12,6 +12,9 @@ export function parseTrailingFlags(argv: string[]): Record<string, string | bool
     const arg = argv[i];
 
     if (arg === '--json') out.json = true;
+    else if (arg === '--live') out.live = true;
+    else if (arg === '--repo') out.repo = nextValue(argv, i++) ?? '';
+    else if (arg === '--target') out.target = nextValue(argv, i++) ?? '60';
     else if (arg === '--no-recommendations') out.noRecommendations = true;
     else if (arg === '--global' || arg === '-g') out.global = true;
     else if (arg === '--enterprise') out.enterprise = true;

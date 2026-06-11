@@ -1,0 +1,11 @@
+[
+  { "name": "git-diff-unified", "command": "git diff", "file": "git-diff-unified.patch" },
+  { "name": "git-status", "command": "git status", "file": "git-status.txt" },
+  { "name": "git-log", "command": "git log", "file": "git-log.txt" },
+  { "name": "cargo-test-verbose", "command": "cargo test", "file": "cargo-test.txt" },
+  { "name": "npm-test-jest", "command": "npm test", "file": "npm-test.txt" },
+  { "name": "docker-logs", "command": "docker logs api", "file": "docker-logs.txt" },
+  { "name": "rg-search", "command": "rg smartCompress", "file": "rg-output.txt" },
+  { "name": "ls-long", "command": "ls -la", "file": "ls-output.txt" },
+  { "name": "kubectl-get-pods", "command": "kubectl get pods", "file": "kubectl-get.txt" }
+]

@@ -9,6 +9,8 @@ import { runDoctor } from './commands/doctor.js';
 import { runUninstall } from './commands/uninstall.js';
 import { runReport } from './commands/report.js';
 import { runCompareCommand } from './commands/compare.js';
+import { runBenchReport } from './commands/bench.js';
+import { formatBenchReport } from '@tokviz/core';
 import { parseTrailingFlags } from './args.js';
 import type { Agent } from '@tokviz/core';
 
@@ -20,6 +22,7 @@ Usage:
   tokviz init -g --agent <cursor|copilot|gemini> [options]
   tokviz stats [--json] [--session <id>]
   tokviz gain
+  tokviz bench [--live] [--json] [--target <n>]
   tokviz report [options]
   tokviz compare [sessionA sessionB] [options]
   tokviz doctor
@@ -90,6 +93,20 @@ async function main(): Promise<void> {
     case 'gain':
       console.log(runGain());
       break;
+    case 'bench': {
+      const benchOpts = {
+        live: !!flags.live,
+        repo: flags.repo as string | undefined,
+        target: flags.target ? Number(flags.target) : undefined,
+      };
+      const report = runBenchReport(benchOpts);
+      const header = flags.live ? `Repo: ${benchOpts.repo ?? process.cwd()}\n\n` : '';
+      console.log(
+        flags.json ? JSON.stringify(report, null, 2) : header + formatBenchReport(report)
+      );
+      if (!report.pass) process.exitCode = 1;
+      break;
+    }
     case 'report':
       console.log(
         runReport({

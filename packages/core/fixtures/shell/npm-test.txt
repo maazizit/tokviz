@@ -1,0 +1,31 @@
+[31m[1mFAIL[22m[39m packages/core/src/compressors.test.ts
+  smartCompress
+    [32m✓[39m filters git diff to change lines only (2 ms)
+    [32m✓[39m keeps only test summary when all pass (1 ms)
+    [31m✕[39m keeps npm test failures and summary (4 ms)
+
+[1m[31m  [1m● [22m[1msmartCompress › keeps npm test failures and summary[39m[22m
+
+    expect(received).toContain(expected)
+
+    Expected substring: "Tests:"
+    Received string:    "FAIL src/b.test.ts"
+
+[2m[22m
+[2m      82 |     const out = smartCompress('npm test', raw);[22m
+[2m      83 |     assert.ok(out.includes('FAIL'));[22m
+[2m    > 84 |     assert.ok(out.includes('Tests:'));[22m
+[2m         |                   ^[22m
+[2m      85 |   });[22m
+[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36mcompressors.test.ts[39m[0m[2m:84:20)[22m[2m[22m
+
+PASS packages/core/src/noise.test.ts
+PASS packages/core/src/tokens.test.ts
+PASS packages/core/src/analytics.test.ts
+
+Test Suites: 1 failed, 3 passed, 4 total
+Tests:       1 failed, 29 passed, 30 total
+Snapshots:   0 total
+Time:        1.842 s
+Ran all test suites.
