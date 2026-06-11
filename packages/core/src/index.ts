@@ -8,7 +8,8 @@ export * from './report.js';
 export * from './compare.js';
 export { compressShellOutput } from './compressor/shell.js';
 export { smartCompress, detectCommandType, compressors } from './compressors.js';
-export { removeNoise, dedupeLines, truncateLines } from './noise.js';
+export { removeNoise, type NoiseMode } from './noiseRemoval.js';
+export { dedupeLines, truncateLines } from './noise.js';
 export {
   loadFixtures,
   runBenchmark,
