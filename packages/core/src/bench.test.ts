@@ -11,9 +11,13 @@ describe('benchmark fixtures', () => {
 
   it('passes 60% benchmark on fixture suite', () => {
     const report = runBenchmark(loadFixtures(), 60);
-    assert.ok(report.pass, `global ${report.totalSavingsPercent}%, failed: ${
-      report.rows.filter((r) => !r.pass && r.tokensRaw >= 50).map((r) => `${r.name}=${r.savingsPercent}%`).join(', ')
-    }`);
+    assert.ok(
+      report.pass,
+      `global ${report.totalSavingsPercent}%, failed: ${report.rows
+        .filter((r) => !r.pass && r.tokensRaw >= 50)
+        .map((r) => `${r.name}=${r.savingsPercent}%`)
+        .join(', ')}`
+    );
     assert.equal(formatBenchReport(report).includes('TokViz'), true);
   });
 });

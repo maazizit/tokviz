@@ -1,22 +1,21 @@
-import { trackShellOutput, trackAgentResponse, trackToolUse } from '@tokviz/core';
+import { trackShellOutput, trackAgentResponse, trackToolUse, trackToolOutput } from '@tokviz/core';
 import type { Agent } from '@tokviz/core';
+import {
+  compressedHookResponse,
+  extractShellCommand,
+  isShellTool,
+  okResponseBase,
+  resolveShellCommand,
+  resolveShellOutput,
+  stashShellCommand,
+  wrappedCommandResponse,
+  type HookInput,
+} from '../hook-payload.js';
+import { wrapVerboseCommand } from '../command-wrapper.js';
+import { safeParseHookInput, validateAgent } from '../validation.js';
 
-interface HookInput {
-  hook_event_name?: string;
-  hookEventName?: string;
-  conversation_id?: string;
-  session_id?: string;
-  sessionId?: string;
-  generation_id?: string;
-  tool_name?: string;
-  tool_input?: Record<string, unknown>;
-  tool_output?: string;
-  tool_response?: string;
-  command?: string;
-  output?: string;
-  text?: string;
-  response?: string;
-  cwd?: string;
+function okResponse(extra: Record<string, unknown> = {}): string {
+  return JSON.stringify({ ...okResponseBase(), ...extra });
 }
 
 function resolveSessionId(input: HookInput): string {
@@ -32,23 +31,22 @@ function resolveSessionId(input: HookInput): string {
 
 function resolveAgent(): Agent {
   const agent = process.env.TOKVIZ_AGENT ?? 'cursor';
-  if (agent === 'copilot' || agent === 'gemini' || agent === 'cursor') return agent;
-  return 'cursor';
-}
-
-function isShellTool(toolName: string): boolean {
-  const normalized = toolName.toLowerCase();
-  return ['shell', 'bash', 'runterminalcommand', 'run_terminal_command'].includes(normalized);
-}
-
-function okResponse(extra: Record<string, unknown> = {}): string {
-  return JSON.stringify({ continue: true, ...extra });
+  return validateAgent(agent);
 }
 
 export async function runHook(stdin: string): Promise<string> {
   let input: HookInput = {};
   try {
-    input = stdin.trim() ? (JSON.parse(stdin) as HookInput) : {};
+    const rawInput = stdin.trim() ? JSON.parse(stdin) : {};
+    const validation = safeParseHookInput(rawInput);
+
+    if (!validation.success) {
+      console.error(`TokViz: Hook input validation warning: ${validation.error}`);
+      // Continue with raw input as fallback for backward compatibility
+      input = rawInput as HookInput;
+    } else {
+      input = validation.data as HookInput;
+    }
   } catch {
     return okResponse();
   }
@@ -60,31 +58,35 @@ export async function runHook(stdin: string): Promise<string> {
   try {
     if (event === 'afterShellExecution' || event === 'PostToolUse' || event === 'AfterTool') {
       const toolName = input.tool_name ?? '';
-      if (
-        toolName &&
-        !isShellTool(toolName) &&
-        !input.output &&
-        !input.tool_output &&
-        !input.tool_response
-      ) {
+      const output = resolveShellOutput(input);
+      if (toolName && !isShellTool(toolName) && !output) {
         return okResponse();
       }
 
-      const command = String(input.command ?? input.tool_input?.command ?? '');
-      const output = String(input.output ?? input.tool_output ?? input.tool_response ?? '');
       if (output) {
-        const { output: compressed, saved } = trackShellOutput({
-          sessionId,
-          agent,
-          command,
-          output,
-        });
-        if (saved > 0 && compressed !== output) {
-          return okResponse({
-            updated_mcp_tool_output: compressed,
-            tool_output: compressed,
-            output: compressed,
+        if (toolName && !isShellTool(toolName)) {
+          const source = /mcp/i.test(toolName) ? 'mcp' : 'tool';
+          const { output: compressed, saved } = trackToolOutput({
+            sessionId,
+            agent,
+            toolName,
+            output,
+            source,
           });
+          if (saved > 0 && compressed !== output) {
+            return okResponse(compressedHookResponse(compressed));
+          }
+        } else {
+          const command = resolveShellCommand(input, sessionId);
+          const { output: compressed, saved } = trackShellOutput({
+            sessionId,
+            agent,
+            command,
+            output,
+          });
+          if (saved > 0 && compressed !== output) {
+            return okResponse(compressedHookResponse(compressed));
+          }
         }
       }
     }
@@ -97,18 +99,24 @@ export async function runHook(stdin: string): Promise<string> {
     if (event === 'preToolUse' || event === 'PreToolUse' || event === 'BeforeTool') {
       const toolName = input.tool_name ?? '';
       if (isShellTool(toolName)) {
-        const command = String(input.tool_input?.command ?? input.command ?? '');
+        const command = extractShellCommand(input);
         if (command) {
+          stashShellCommand(sessionId, command, input.tool_use_id);
           trackToolUse({
             sessionId,
             agent,
             toolName: 'Shell',
             inputText: command,
           });
+
+          const wrapped = wrapVerboseCommand(command);
+          if (wrapped) {
+            stashShellCommand(sessionId, wrapped, input.tool_use_id);
+            return okResponse(wrappedCommandResponse(wrapped));
+          }
         }
       }
     }
-
   } catch {
     // fail-open: never block the agent
   }

@@ -11,7 +11,5 @@ export function runUninstall(opts: { global: boolean; agent: AgentName }): strin
 
   const path = paths[opts.agent];
   const removed = removeTokvizHooks(path);
-  return removed
-    ? [`Removed TokViz hooks from ${path}`]
-    : [`No TokViz hooks found in ${path}`];
+  return removed ? [`Removed TokViz hooks from ${path}`] : [`No TokViz hooks found in ${path}`];
 }

@@ -1,8 +1,4 @@
-import {
-  getAllEvents,
-  getGlobalStatsForEvents,
-  getSessionStatsForEvents,
-} from './db.js';
+import { getAllEvents, getGlobalStatsForEvents, getSessionStatsForEvents } from './db.js';
 import { filterEvents, type EventFilter } from './filters.js';
 import { buildRecommendations, type Recommendation } from './recommendations.js';
 import type { SessionStats, TokenEvent } from './types.js';
@@ -134,7 +130,12 @@ export function formatReportMarkdown(data: ReportData): string {
   ];
 
   if (data.byAgent.length > 0) {
-    lines.push('## Par agent', '', '| Agent | Tokens IN | Économie | % |', '|-------|-----------|----------|---|');
+    lines.push(
+      '## Par agent',
+      '',
+      '| Agent | Tokens IN | Économie | % |',
+      '|-------|-----------|----------|---|'
+    );
     for (const row of data.byAgent) {
       lines.push(
         `| ${row.agent} | ${formatNumber(row.tokensIn)} | ${formatNumber(row.tokensSaved)} | ${row.savingsPercent} % |`
@@ -201,21 +202,24 @@ export function formatReportHtml(data: ReportData): string {
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/^- (.+)$/gm, '<li>$1</li>')
     .replace(/(<li>.*<\/li>\n?)+/g, (block) => `<ul>${block}</ul>`)
-    .replace(
-      /\|(.+)\|\n\|[-| ]+\|\n((?:\|.+\|\n?)+)/g,
-      (_match, header: string, rows: string) => {
-        const headers = header.split('|').filter(Boolean).map((cell: string) => `<th>${cell.trim()}</th>`);
-        const bodyRows = rows
-          .trim()
-          .split('\n')
-          .map((row: string) => {
-            const cells = row.split('|').filter(Boolean).map((cell: string) => `<td>${cell.trim()}</td>`);
-            return `<tr>${cells.join('')}</tr>`;
-          })
-          .join('');
-        return `<table><thead><tr>${headers.join('')}</tr></thead><tbody>${bodyRows}</tbody></table>`;
-      }
-    )
+    .replace(/\|(.+)\|\n\|[-| ]+\|\n((?:\|.+\|\n?)+)/g, (_match, header: string, rows: string) => {
+      const headers = header
+        .split('|')
+        .filter(Boolean)
+        .map((cell: string) => `<th>${cell.trim()}</th>`);
+      const bodyRows = rows
+        .trim()
+        .split('\n')
+        .map((row: string) => {
+          const cells = row
+            .split('|')
+            .filter(Boolean)
+            .map((cell: string) => `<td>${cell.trim()}</td>`);
+          return `<tr>${cells.join('')}</tr>`;
+        })
+        .join('');
+      return `<table><thead><tr>${headers.join('')}</tr></thead><tbody>${bodyRows}</tbody></table>`;
+    })
     .replace(/\n\n/g, '<br><br>');
 
   return `<!DOCTYPE html>

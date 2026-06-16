@@ -1,3 +1,5 @@
+import { validateAgent } from './validation.js';
+
 export function nextValue(argv: string[], index: number): string | undefined {
   const value = argv[index + 1];
   if (!value || value.startsWith('-')) return undefined;
@@ -24,8 +26,11 @@ export function parseTrailingFlags(argv: string[]): Record<string, string | bool
     else if (arg === '-o' || arg === '--output') out.output = nextValue(argv, i++) ?? '';
     else if (arg === '--since') out.since = nextValue(argv, i++) ?? '';
     else if (arg === '--until') out.until = nextValue(argv, i++) ?? '';
-    else if (arg === '--agent') out.agent = nextValue(argv, i++) ?? '';
-    else if (arg === '--agents') out.agents = (nextValue(argv, i++) ?? '').split(',').filter(Boolean);
+    else if (arg === '--agent') {
+      const agentValue = nextValue(argv, i++) ?? '';
+      out.agent = validateAgent(agentValue);
+    } else if (arg === '--agents')
+      out.agents = (nextValue(argv, i++) ?? '').split(',').filter(Boolean);
     else if (arg === '--session') out.session = nextValue(argv, i++) ?? '';
     else if (arg === '--rank') out.rank = nextValue(argv, i++) ?? 'top';
     else if (arg === '--limit') out.limit = nextValue(argv, i++) ?? '10';
@@ -33,6 +38,7 @@ export function parseTrailingFlags(argv: string[]): Record<string, string | bool
     else if (arg === '--before') out.before = nextValue(argv, i++) ?? '';
     else if (arg === '--after') out.after = nextValue(argv, i++) ?? '';
     else if (arg === '--prose') out.prose = nextValue(argv, i++) ?? '';
+    else if (arg === '--workspace') out.workspace = nextValue(argv, i++) ?? '';
     else if (!arg.startsWith('-')) positional.push(arg);
   }
 

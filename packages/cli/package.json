@@ -8,7 +8,9 @@
   "bin": {
     "tokviz": "./dist/index.js"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json && chmod +x dist/index.js",
     "bundle": "esbuild src/index.ts --bundle --platform=node --target=node20 --format=esm --outfile=dist/cli.bundle.mjs",
@@ -17,7 +19,8 @@
     "test": "node --import tsx --test src/**/*.test.ts"
   },
   "dependencies": {
-    "@tokviz/core": "workspace:*"
+    "@tokviz/core": "workspace:*",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

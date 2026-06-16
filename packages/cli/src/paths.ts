@@ -4,8 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 export const TOKVIZ_HOME = join(homedir(), '.tokviz');
 export const REPO_ROOT =
-  process.env.TOKVIZ_REPO_ROOT ??
-  join(dirname(fileURLToPath(import.meta.url)), '../../..');
+  process.env.TOKVIZ_REPO_ROOT ?? join(dirname(fileURLToPath(import.meta.url)), '../../..');
 
 export function cursorHooksPath(global: boolean): string {
   return global

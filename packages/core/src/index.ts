@@ -6,10 +6,31 @@ export * from './filters.js';
 export * from './recommendations.js';
 export * from './report.js';
 export * from './compare.js';
+export * from './errors.js';
 export { compressShellOutput } from './compressor/shell.js';
-export { smartCompress, detectCommandType, compressors } from './compressors.js';
+export { compressToolOutput } from './compressor/tool.js';
+export type { ToolCompressResult } from './compressor/tool.js';
+export {
+  resolveCompressionLevel,
+  shouldEscalateCompression,
+  nextCompressionLevel,
+  estimateOutputSize,
+} from './compressor/adaptive.js';
+export {
+  smartCompress,
+  detectCommandType,
+  compressors,
+  compressHierarchical,
+  type CompressionLevel,
+} from './compressors.js';
 export { removeNoise, type NoiseMode } from './noiseRemoval.js';
-export { dedupeLines, truncateLines } from './noise.js';
+export {
+  dedupeLines,
+  dedupeLinesSmart,
+  truncateLines,
+  selectImportantLines,
+  scoreLineImportance,
+} from './noise.js';
 export {
   loadFixtures,
   runBenchmark,

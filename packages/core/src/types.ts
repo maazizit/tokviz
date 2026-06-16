@@ -1,6 +1,6 @@
 export type Agent = 'cursor' | 'copilot' | 'gemini' | 'claude-code' | 'windsurf';
 
-export type EventSource = 'shell' | 'prose' | 'tool' | 'subagent';
+export type EventSource = 'shell' | 'prose' | 'tool' | 'mcp' | 'subagent';
 
 export interface TokenEvent {
   id: string;
@@ -10,6 +10,7 @@ export interface TokenEvent {
   source: EventSource;
   toolName?: string;
   command?: string;
+  compressor?: string;
   tokensRaw: number;
   tokensOptimized: number;
   tokensSaved: number;

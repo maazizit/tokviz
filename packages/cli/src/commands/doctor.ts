@@ -8,7 +8,9 @@ export function runDoctor(): string {
   const lines: string[] = ['TokViz — Doctor', '─'.repeat(40)];
 
   const home = getTokvizHome();
-  lines.push(existsSync(home) ? `✔ ~/.tokviz exists (${home})` : '✗ ~/.tokviz missing — run tokviz init');
+  lines.push(
+    existsSync(home) ? `✔ ~/.tokviz exists (${home})` : '✗ ~/.tokviz missing — run tokviz init'
+  );
 
   for (const [name, pathFn] of [
     ['cursor', () => cursorHooksPath(true)],
@@ -19,7 +21,9 @@ export function runDoctor(): string {
     const hookScript = `${home}/hooks/${name}/hook.sh`;
     if (existsSync(p)) {
       const hasTokviz = readFileSync(p, 'utf8').includes('tokviz');
-      lines.push(hasTokviz ? `✔ ${name} hooks (${p})` : `⚠ ${name} hooks exist but no tokviz entry`);
+      lines.push(
+        hasTokviz ? `✔ ${name} hooks (${p})` : `⚠ ${name} hooks exist but no tokviz entry`
+      );
     } else {
       lines.push(`○ ${name} hooks not installed`);
     }
@@ -27,7 +31,9 @@ export function runDoctor(): string {
   }
 
   lines.push('');
-  lines.push(`Config: enterprise=${config.enterpriseMode} noContentLog=${config.noContentLog} trackOnly=${config.trackOnly}`);
+  lines.push(
+    `Config: enterprise=${config.enterpriseMode} noContentLog=${config.noContentLog} trackOnly=${config.trackOnly}`
+  );
   lines.push(`Events: ${stats.eventCount} | Saved: ${stats.totalSaved.toLocaleString()} tokens`);
 
   return lines.join('\n');

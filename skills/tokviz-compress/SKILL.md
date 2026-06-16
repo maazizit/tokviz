@@ -15,7 +15,7 @@ Reduce tokens in assistant responses. **Does not intercept data** — instructio
 |-------|---------|--------|
 | off | default | Normal responses |
 | lite | `/tokviz lite` | Drop filler, keep full sentences |
-| full | `/tokviz` | Short, direct answers. No hedging |
+| full | `/tokviz` | Short, direct answers. No hedging. Code-only on code tasks |
 | ultra | `/tokviz ultra` | Maximum compression. Fragments OK |
 
 ## Rules (full mode)
@@ -24,6 +24,7 @@ Reduce tokens in assistant responses. **Does not intercept data** — instructio
 - Keep technical terms, code, errors exact
 - Code blocks unchanged
 - Pattern: `[thing] [action] [reason]. [next step].`
+- On code tasks: output code only unless user asks to explain
 
 ## Auto-clarity
 

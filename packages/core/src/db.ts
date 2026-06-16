@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type { Agent, EventSource, SessionStats, TokenEvent, TokVizConfig } from './types.js';
 import { DEFAULT_CONFIG } from './types.js';
+import { ConfigError, DataError, FileSystemError } from './errors.js';
 
 export function getTokvizHome(): string {
   return process.env.TOKVIZ_HOME ?? join(homedir(), '.tokviz');
@@ -12,8 +13,8 @@ export function getTokvizHome(): string {
 /** @deprecated Use getTokvizHome() — kept for backward compatibility */
 export const TOKVIZ_HOME = join(homedir(), '.tokviz');
 
-const EVENTS_FILE = () => join(getTokvizHome(), 'events.json');
-const CONFIG_FILE = () => join(getTokvizHome(), 'config.json');
+const EVENTS_FILE = (): string => join(getTokvizHome(), 'events.json');
+const CONFIG_FILE = (): string => join(getTokvizHome(), 'config.json');
 
 interface Store {
   events: TokenEvent[];
@@ -22,16 +23,39 @@ interface Store {
 function ensureHome(): void {
   const home = getTokvizHome();
   if (!existsSync(home)) {
-    mkdirSync(home, { recursive: true });
+    try {
+      mkdirSync(home, { recursive: true });
+    } catch (err) {
+      throw new FileSystemError(
+        `Failed to create TokViz home directory at ${home}`,
+        home,
+        err as Error
+      );
+    }
   }
 }
 
 function readStore(): Store {
   ensureHome();
-  if (!existsSync(EVENTS_FILE())) return { events: [] };
+  const eventsFile = EVENTS_FILE();
+
+  if (!existsSync(eventsFile)) return { events: [] };
+
   try {
-    return JSON.parse(readFileSync(EVENTS_FILE(), 'utf8')) as Store;
-  } catch {
+    const content = readFileSync(eventsFile, 'utf8');
+    const parsed = JSON.parse(content) as Store;
+
+    // Validate the structure
+    if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.events)) {
+      console.warn(`TokViz: events.json has invalid structure, resetting to empty`);
+      return { events: [] };
+    }
+
+    return parsed;
+  } catch (err) {
+    const error = err as Error;
+    console.error(`TokViz: Failed to read events from ${eventsFile}: ${error.message}`);
+    console.error(`TokViz: Returning empty event list as fallback`);
     return { events: [] };
   }
 }
@@ -40,16 +64,32 @@ function writeStore(store: Store): void {
   ensureHome();
   const eventsFile = EVENTS_FILE();
   const tmp = `${eventsFile}.tmp`;
-  writeFileSync(tmp, JSON.stringify(store, null, 2), 'utf8');
-  renameSync(tmp, eventsFile);
+
+  try {
+    writeFileSync(tmp, JSON.stringify(store, null, 2), 'utf8');
+    renameSync(tmp, eventsFile);
+  } catch (err) {
+    throw new DataError(
+      `Failed to write events to ${eventsFile}: ${(err as Error).message}`,
+      eventsFile
+    );
+  }
 }
 
 export function getConfig(): TokVizConfig {
   ensureHome();
-  if (!existsSync(CONFIG_FILE())) return { ...DEFAULT_CONFIG };
+  const configFile = CONFIG_FILE();
+
+  if (!existsSync(configFile)) return { ...DEFAULT_CONFIG };
+
   try {
-    return { ...DEFAULT_CONFIG, ...JSON.parse(readFileSync(CONFIG_FILE(), 'utf8')) };
-  } catch {
+    const content = readFileSync(configFile, 'utf8');
+    const parsed = JSON.parse(content);
+    return { ...DEFAULT_CONFIG, ...parsed };
+  } catch (err) {
+    const error = err as Error;
+    console.error(`TokViz: Failed to read config from ${configFile}: ${error.message}`);
+    console.error(`TokViz: Using default configuration as fallback`);
     return { ...DEFAULT_CONFIG };
   }
 }
@@ -57,7 +97,17 @@ export function getConfig(): TokVizConfig {
 export function saveConfig(config: Partial<TokVizConfig>): TokVizConfig {
   const merged = { ...getConfig(), ...config };
   ensureHome();
-  writeFileSync(CONFIG_FILE(), JSON.stringify(merged, null, 2), 'utf8');
+  const configFile = CONFIG_FILE();
+
+  try {
+    writeFileSync(configFile, JSON.stringify(merged, null, 2), 'utf8');
+  } catch (err) {
+    throw new ConfigError(
+      `Failed to save config to ${configFile}: ${(err as Error).message}`,
+      configFile
+    );
+  }
+
   return merged;
 }
 
@@ -67,6 +117,7 @@ export function recordEvent(input: {
   source: EventSource;
   toolName?: string;
   command?: string;
+  compressor?: string;
   tokensRaw: number;
   tokensOptimized: number;
   metadata?: Record<string, unknown>;
@@ -80,6 +131,7 @@ export function recordEvent(input: {
     source: input.source,
     toolName: input.toolName,
     command: input.command?.slice(0, 200),
+    compressor: input.compressor,
     tokensRaw: input.tokensRaw,
     tokensOptimized: input.tokensOptimized,
     tokensSaved: Math.max(0, input.tokensRaw - input.tokensOptimized),

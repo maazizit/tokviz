@@ -14,9 +14,7 @@ export function runGain(): string {
     byCommand.set(key, entry);
   }
 
-  const top = [...byCommand.entries()]
-    .sort((a, b) => b[1].saved - a[1].saved)
-    .slice(0, 5);
+  const top = [...byCommand.entries()].sort((a, b) => b[1].saved - a[1].saved).slice(0, 5);
 
   const lines: string[] = [
     'TokViz — Token Savings',
@@ -30,8 +28,7 @@ export function runGain(): string {
   if (top.length > 0) {
     lines.push('Top savings:');
     for (const [cmd, stats] of top) {
-      const pct =
-        stats.raw > 0 ? Math.round((stats.saved / stats.raw) * 1000) / 10 : 0;
+      const pct = stats.raw > 0 ? Math.round((stats.saved / stats.raw) * 1000) / 10 : 0;
       lines.push(`  ${cmd.padEnd(16)} -${stats.saved.toLocaleString()} (${pct}%)`);
     }
   } else {

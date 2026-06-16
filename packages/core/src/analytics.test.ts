@@ -92,6 +92,8 @@ describe('analytics', () => {
   it('warns when a session has low savings on high volume', () => {
     const sessions = getSessionStatsForEvents(sampleEvents);
     const recs = buildRecommendations(sessions, sampleEvents);
-    assert.ok(recs.some((rec) => rec.message.includes('économie faible') || rec.message.includes('15 %')));
+    assert.ok(
+      recs.some((rec) => rec.message.includes('économie faible') || rec.message.includes('15 %'))
+    );
   });
 });

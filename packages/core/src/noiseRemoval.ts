@@ -9,6 +9,12 @@ const TIMESTAMP_RE =
 const LOG_LEVEL_RE = /^\[?(?:DEBUG|INFO|TRACE)\]?\s*:?\s*/gm;
 const SPINNER_RE = /^[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]\s+/gm;
 
+// New patterns for aggressive mode
+const URL_RE = /https?:\/\/[^\s]+/g;
+const GIT_HASH_RE = /\b([a-f0-9]{40})\b/g;
+const _GIT_SHORT_HASH_RE = /\b([a-f0-9]{7,12})\b/g;
+const UUID_RE = /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi;
+
 const SEPARATOR_LINE_RE = /^[-=_*─═┈┉┊┋│┃╌╍╎╏═║]{3,}\s*$/;
 const AGGRESSIVE_SPINNER_RE =
   /^(?:[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]\s+|^[|/\\-]\s+\S{0,48}$|(?:Loading|Downloading|Installing|Building|Compiling|Resolving|Fetching)(?:\.{3,}|\s))/i;
@@ -16,9 +22,37 @@ const AGGRESSIVE_PROGRESS_RE = [
   /^[#.]+\s+\d{1,3}%/,
   /^\d{1,4}\/\d{1,4}(?:\s|$)/,
   /^(?:\s*\d+%\s*)?(?:\||\/|-|\\)\s*(?:\d+%|complete)/i,
-  /^>\s*$/ ,
+  /^>\s*$/,
   /^\s*npm\s+WARN\s+deprecated/i,
 ];
+
+function shortenUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    return `${parsed.hostname}${parsed.pathname.length > 20 ? '/...' : parsed.pathname}`;
+  } catch {
+    return url.slice(0, 40) + '...';
+  }
+}
+
+function shortenHash(hash: string): string {
+  return hash.slice(0, 7);
+}
+
+function applyAggressiveNormalization(text: string): string {
+  let out = text;
+
+  // Shorten URLs to just domain + short path
+  out = out.replace(URL_RE, (url) => `<${shortenUrl(url)}>`);
+
+  // Shorten full Git hashes to 7 chars
+  out = out.replace(GIT_HASH_RE, (hash) => shortenHash(hash));
+
+  // Replace UUIDs with placeholder
+  out = out.replace(UUID_RE, '<UUID>');
+
+  return out;
+}
 
 function stripLineNoise(line: string): string {
   return line.replace(TIMESTAMP_RE, '').replace(LOG_LEVEL_RE, '').trimEnd();
@@ -42,6 +76,7 @@ function applyNoiseRemoval(text: string, aggressive: boolean): string {
 
   if (aggressive) {
     out = out.replace(SPINNER_RE, '');
+    out = applyAggressiveNormalization(out);
   } else {
     out = out.replace(SPINNER_RE, '');
   }
@@ -51,7 +86,10 @@ function applyNoiseRemoval(text: string, aggressive: boolean): string {
     .map(stripLineNoise)
     .filter((line) => !isNoiseLine(line, aggressive));
 
-  return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  return lines
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 }
 
 /** Strip universal shell noise: ANSI, timestamps, progress bars, log prefixes */

@@ -1,19 +1,43 @@
-import { dedupeLines, removeNoise, truncateLines } from './noise.js';
+import { dedupeLinesSmart, removeNoise, selectImportantLines, truncateLines } from './noise.js';
 import { collapseDiffBlock } from './security.js';
+import {
+  estimateOutputSize,
+  nextCompressionLevel,
+  resolveCompressionLevel,
+  shouldEscalateCompression,
+} from './compressor/adaptive.js';
+import { estimateTokens } from './tokens.js';
 
 const MAX_GENERIC_LINES = 80;
 const MAX_LIST_LINES = 40;
 const MAX_DIFF_LINES = 120;
 
 const COMPRESSOR_ORDER = [
+  'docker build',
   'docker logs',
   'docker ps',
+  'npm install',
+  'pnpm install',
+  'yarn install',
+  'bun install',
+  'pip install',
+  'poetry install',
+  'terraform plan',
+  'terraform apply',
+  'npm run build',
+  'pnpm run build',
+  'make',
+  'go test',
+  'tsc',
+  'webpack',
+  'vite build',
   'kubectl',
   'aws',
   'gcp',
   'curl',
   'cat',
   'git diff',
+  'git show',
   'git status',
   'git log',
   'cargo test',
@@ -29,6 +53,81 @@ const COMPRESSOR_ORDER = [
 ] as const;
 
 type CompressorKey = (typeof COMPRESSOR_ORDER)[number];
+
+type OutputFormat = 'json' | 'xml' | 'yaml' | 'table' | 'logs' | 'code' | 'unknown';
+
+/** Auto-detect output format */
+function detectOutputFormat(output: string): OutputFormat {
+  const trimmed = output.trim();
+  const _firstLine = trimmed.split('\n')[0];
+
+  // JSON
+  if ((trimmed.startsWith('{') || trimmed.startsWith('[')) && tryParseJson(output)) {
+    return 'json';
+  }
+
+  // XML
+  if (trimmed.startsWith('<?xml') || /^<[\w-]+[^>]*>/.test(trimmed)) {
+    return 'xml';
+  }
+
+  // YAML (key: value at start of lines)
+  const yamlPattern = /^[\w-]+:\s*[\w-]/m;
+  if (yamlPattern.test(trimmed) && !trimmed.includes('{') && !trimmed.includes('<')) {
+    const lines = trimmed.split('\n').slice(0, 5);
+    const yamlLines = lines.filter((l) => /^[\w-]+:\s/.test(l.trim()));
+    if (yamlLines.length >= 2) {
+      return 'yaml';
+    }
+  }
+
+  // Table (headers with dashes or pipes)
+  const lines = trimmed.split('\n');
+  if (lines.length >= 2) {
+    const hasTableSeparator = lines.some((l) => /^[-+|=\s]+$/.test(l.trim()));
+    const hasPipes = lines.filter((l) => l.includes('|')).length >= 2;
+    if (hasTableSeparator || hasPipes) {
+      return 'table';
+    }
+  }
+
+  // Logs (timestamps, log levels)
+  const logPattern =
+    /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}|^\[?(DEBUG|INFO|WARN|ERROR|FATAL)\]?:/im;
+  if (logPattern.test(trimmed)) {
+    return 'logs';
+  }
+
+  // Code (function, class, import keywords)
+  const codePattern = /\b(function|class|import|export|const|let|var|def|async)\s+\w+/;
+  if (codePattern.test(trimmed)) {
+    return 'code';
+  }
+
+  return 'unknown';
+}
+
+/** Compress based on detected format */
+function compressByFormat(output: string, format: OutputFormat): string {
+  switch (format) {
+    case 'json': {
+      const data = tryParseJson(output);
+      return data ? compressJsonOutput(data, 3, 'auto') : output;
+    }
+    case 'xml':
+      return selectImportantLines(output, 30);
+    case 'yaml':
+      return selectImportantLines(output, 40);
+    case 'table':
+      return compressTableOutput(output, 12);
+    case 'logs':
+      return selectImportantLines(output, 50);
+    case 'code':
+      return truncateLines(output, 60);
+    default:
+      return truncateLines(output, MAX_GENERIC_LINES);
+  }
+}
 
 function parseGrepLine(line: string): { file: string; body: string } {
   const match = line.match(/^(.+?):(\d+):(.*)$/);
@@ -46,26 +145,74 @@ function tryParseJson(output: string): unknown | null {
   }
 }
 
-function compressJsonOutput(data: unknown, maxItems = 2): string {
+function compressJsonOutput(data: unknown, maxItems = 2, context?: string): string {
   if (Array.isArray(data)) {
+    // For large arrays, show samples
     if (data.length <= maxItems) return JSON.stringify(data);
+
+    // Keep more items for certain contexts
+    const itemsToShow = context === 'logs' ? Math.min(2, maxItems) : maxItems;
+
     return JSON.stringify({
       _tokviz: `${data.length} items`,
-      sample: data.slice(0, maxItems),
-      _omitted: data.length - maxItems,
+      sample: data.slice(0, itemsToShow),
+      _omitted: data.length - itemsToShow,
     });
   }
 
   if (data && typeof data === 'object') {
-    const entries = Object.entries(data as Record<string, unknown>);
-    if (entries.length > 10) {
-      const trimmed = Object.fromEntries(entries.slice(0, 6));
-      return JSON.stringify({
-        _tokviz: `${entries.length} keys`,
-        ...trimmed,
-        _omittedKeys: entries.length - 6,
-      });
+    const obj = data as Record<string, unknown>;
+    const entries = Object.entries(obj);
+
+    // Identify critical keys to always keep
+    const criticalKeys = new Set([
+      'name',
+      'version',
+      'error',
+      'message',
+      'status',
+      'code',
+      'dependencies',
+      'devDependencies',
+      'scripts',
+      'main',
+      'type',
+    ]);
+
+    const critical = entries.filter(([key]) => criticalKeys.has(key));
+    const others = entries.filter(([key]) => !criticalKeys.has(key));
+
+    // Keep all critical keys
+    const result: Record<string, unknown> = {};
+    for (const [key, value] of critical) {
+      // Compress nested objects/arrays in critical keys too
+      if (Array.isArray(value) && value.length > 10) {
+        result[key] = `[${value.length} items]`;
+      } else if (value && typeof value === 'object') {
+        result[key] = compressJsonOutput(value, 2, key);
+      } else {
+        result[key] = value;
+      }
     }
+
+    // Add some non-critical keys
+    const maxOthers = Math.max(0, 6 - critical.length);
+    for (let i = 0; i < Math.min(maxOthers, others.length); i++) {
+      const [key, value] = others[i];
+      if (Array.isArray(value) && value.length > 5) {
+        result[key] = `[${value.length} items]`;
+      } else if (value && typeof value === 'object') {
+        result[key] = '[nested object]';
+      } else {
+        result[key] = value;
+      }
+    }
+
+    if (others.length > maxOthers) {
+      result._omittedKeys = others.length - maxOthers;
+    }
+
+    return JSON.stringify(result);
   }
 
   return JSON.stringify(data);
@@ -194,9 +341,7 @@ function compressNpmTestOutput(output: string): string {
     }
   }
 
-  const filtered = failures.filter(
-    (l) => !/^Test Suites:|^Tests:|^Snapshots:/i.test(l.trim())
-  );
+  const filtered = failures.filter((l) => !/^Test Suites:|^Tests:|^Snapshots:/i.test(l.trim()));
 
   if (filtered.length === 0) return 'tokviz: all tests passed';
   return filtered.join('\n');
@@ -213,9 +358,7 @@ function isGitStatusFileLine(line: string): boolean {
 
 function compressGitStatus(output: string): string {
   const lines = output.split('\n');
-  const branch = lines.find(
-    (l) => l.startsWith('On branch') || /^\* \S/.test(l.trimStart())
-  );
+  const branch = lines.find((l) => l.startsWith('On branch') || /^\* \S/.test(l.trimStart()));
   const files = lines.filter(isGitStatusFileLine);
 
   const untracked = files.filter((l) => l.startsWith('??'));
@@ -375,7 +518,7 @@ function compressKubectlDescribe(output: string): string {
 
 function compressKubectl(output: string): string {
   const json = tryParseJson(output);
-  if (json) return compressJsonOutput(json, 3);
+  if (json) return compressJsonOutput(json, 3, 'kubectl');
 
   if (output.includes('Name:') && output.includes('Namespace:')) {
     return compressKubectlDescribe(output);
@@ -386,7 +529,7 @@ function compressKubectl(output: string): string {
 
 function compressAws(output: string): string {
   const json = tryParseJson(output);
-  if (json) return compressJsonOutput(json, 2);
+  if (json) return compressJsonOutput(json, 2, 'aws');
 
   const lines = output.split('\n').filter((l) => l.trim());
   if (lines.length > 12) {
@@ -398,7 +541,7 @@ function compressAws(output: string): string {
 
 function compressGcp(output: string): string {
   const json = tryParseJson(output);
-  if (json) return compressJsonOutput(json, 2);
+  if (json) return compressJsonOutput(json, 2, 'gcp');
 
   return compressTableOutput(output, 10);
 }
@@ -445,11 +588,13 @@ function compressDockerLogs(output: string): string {
 }
 
 function formatCurlChunk(headers: string[], body: string[]): string {
-  const status = headers[0] ?? '';
-  const keptHeaders = headers.filter((h, i) => {
-    if (i === 0) return true;
-    return /^(content-type|content-length|location|set-cookie|x-|server|date):/i.test(h);
-  }).slice(0, 5);
+  const _status = headers[0] ?? '';
+  const keptHeaders = headers
+    .filter((h, i) => {
+      if (i === 0) return true;
+      return /^(content-type|content-length|location|set-cookie|x-|server|date):/i.test(h);
+    })
+    .slice(0, 5);
 
   const bodyText = body.join('\n').trim();
   if (!bodyText) return keptHeaders.join('\n');
@@ -474,7 +619,7 @@ function compressCurl(output: string): string {
   let inHeaders = false;
   let sawResponse = false;
 
-  const flush = () => {
+  const flush = (): void => {
     if (headerLines.length || bodyLines.length) {
       chunks.push(formatCurlChunk(headerLines, bodyLines));
     }
@@ -523,11 +668,203 @@ function compressCat(output: string): string {
 
   const head = lines.slice(0, 15);
   const tail = lines.slice(-5);
-  return [
-    ...head,
-    `… ${lines.length - 20} lines omitted (tokviz summary)`,
-    ...tail,
-  ].join('\n');
+  return [...head, `… ${lines.length - 20} lines omitted (tokviz summary)`, ...tail].join('\n');
+}
+
+/** npm/pnpm/yarn/bun install — keep errors, warnings, and summary */
+function compressPackageInstall(output: string): string {
+  const lines = output.split('\n');
+  const kept: string[] = [];
+
+  for (const line of lines) {
+    const _lower = line.toLowerCase();
+    // Keep errors, warnings, and important info
+    if (
+      /\b(error|err|warn|warning|deprecated|failed|fatal)\b/i.test(line) ||
+      /\b(installed|added|removed|updated)\b/i.test(line) ||
+      /^\s*[\+\-]\s/.test(line) ||
+      /^(Done|Success|✓)/i.test(line.trim()) ||
+      /\d+\s+packages?\s+in\s+[\d.]+s/i.test(line)
+    ) {
+      kept.push(line);
+    }
+  }
+
+  if (kept.length === 0) {
+    return `tokviz: install completed (${lines.length} log lines omitted)`;
+  }
+
+  return truncateLines(kept.join('\n'), 40);
+}
+
+/** pip/poetry install — keep errors and summary */
+function compressPythonInstall(output: string): string {
+  const lines = output.split('\n');
+  const kept: string[] = [];
+
+  for (const line of lines) {
+    if (
+      /\b(error|err|warn|warning|failed|fatal|exception)\b/i.test(line) ||
+      /Successfully installed/i.test(line) ||
+      /^Installing /i.test(line.trim()) ||
+      /\d+ packages? (installed|updated)/i.test(line)
+    ) {
+      kept.push(line);
+    }
+  }
+
+  if (kept.length === 0) {
+    return `tokviz: Python packages installed (${lines.length} log lines omitted)`;
+  }
+
+  return truncateLines(kept.join('\n'), 30);
+}
+
+/** docker build — keep stages, errors, and final image ID */
+function compressDockerBuild(output: string): string {
+  const lines = output.split('\n');
+  const kept: string[] = [];
+  let lastImageId: string | null = null;
+
+  for (const line of lines) {
+    if (
+      /^Step \d+\/\d+/i.test(line) ||
+      /^#\d+\s+\[/i.test(line) ||
+      /\b(error|err|warn|warning|failed|fatal)\b/i.test(line) ||
+      /^CACHED/i.test(line.trim()) ||
+      /^Building/i.test(line.trim())
+    ) {
+      kept.push(line);
+    }
+
+    // Capture final image ID
+    const imageIdMatch = line.match(/Successfully built ([a-f0-9]{12})/i);
+    if (imageIdMatch) {
+      lastImageId = imageIdMatch[1];
+      kept.push(line);
+    }
+
+    if (/Successfully tagged/i.test(line)) {
+      kept.push(line);
+    }
+  }
+
+  if (kept.length === 0 && lastImageId) {
+    return `tokviz: docker build completed → ${lastImageId}`;
+  }
+
+  if (kept.length === 0) {
+    return `tokviz: docker build completed (${lines.length} log lines omitted)`;
+  }
+
+  return truncateLines(kept.join('\n'), 50);
+}
+
+/** terraform plan/apply — keep changes and summary */
+function compressTerraform(output: string): string {
+  const lines = output.split('\n');
+  const kept: string[] = [];
+  let inChanges = false;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    // Keep summary lines
+    if (
+      /^Plan:/i.test(trimmed) ||
+      /^Apply complete!/i.test(trimmed) ||
+      /^\d+ to add, \d+ to change, \d+ to destroy/i.test(trimmed) ||
+      /^Error:/i.test(trimmed) ||
+      /^Warning:/i.test(trimmed)
+    ) {
+      kept.push(line);
+      continue;
+    }
+
+    // Track resource changes
+    if (/^(# |~|\+|-)\s*\w+\.\w+/.test(trimmed)) {
+      inChanges = true;
+      kept.push(line);
+      continue;
+    }
+
+    // Keep first few lines of each resource change
+    if (inChanges && /^\s*[\+\-~]/.test(line)) {
+      if (kept.length < 80) {
+        kept.push(line);
+      }
+    } else {
+      inChanges = false;
+    }
+  }
+
+  if (kept.length === 0) {
+    return `tokviz: terraform completed (${lines.length} log lines omitted)`;
+  }
+
+  return truncateLines(kept.join('\n'), 60);
+}
+
+function compressMakeOutput(output: string): string {
+  const lines = output.split('\n');
+  const kept = lines.filter(
+    (line) =>
+      /\b(error|failed|warning|make: \*\*\*|No rule to make)\b/i.test(line) ||
+      /^make\[/.test(line.trim()) ||
+      /^(Nothing to be done|Success|Built target)/i.test(line.trim())
+  );
+  if (kept.length === 0) {
+    return selectImportantLines(output, 25);
+  }
+  return truncateLines(kept.join('\n'), 35);
+}
+
+function compressGoTestOutput(output: string): string {
+  return compressCargoTestOutput(output);
+}
+
+function compressGitShow(output: string): string {
+  const lines = output.split('\n');
+  const header = lines.filter(
+    (l) =>
+      l.startsWith('commit ') ||
+      l.startsWith('Author:') ||
+      l.startsWith('Date:') ||
+      (l.trim() && !l.startsWith('diff --git') && !l.startsWith('index '))
+  );
+  const diffStart = lines.findIndex((l) => l.startsWith('diff --git') || l.startsWith('@@'));
+  if (diffStart >= 0) {
+    return compressUnifiedGitDiff(lines.slice(diffStart).join('\n'));
+  }
+  return truncateLines(header.join('\n'), 30);
+}
+
+function compressNpmRunBuild(output: string): string {
+  return compressBuildOutput(output);
+}
+
+/** tsc/webpack/vite build — keep errors and summary */
+function compressBuildOutput(output: string): string {
+  const lines = output.split('\n');
+  const kept: string[] = [];
+
+  for (const line of lines) {
+    if (
+      /\b(error|err|warning|warn|failed|fatal)\b/i.test(line) ||
+      /^✓|^✔|^Build success|^Built in|^Compiled/i.test(line.trim()) ||
+      /\d+\.\d+\s*(k?B|MB)\s+│/i.test(line) ||
+      /\d+\s+modules?\s+transformed/i.test(line) ||
+      /Hash:|Time:|Chunk Names:/i.test(line)
+    ) {
+      kept.push(line);
+    }
+  }
+
+  if (kept.length === 0) {
+    return `tokviz: build completed (${lines.length} log lines omitted)`;
+  }
+
+  return truncateLines(kept.join('\n'), 40);
 }
 
 export const compressors: Record<CompressorKey, (output: string) => string> = {
@@ -548,6 +885,28 @@ export const compressors: Record<CompressorKey, (output: string) => string> = {
 
   'docker logs': compressDockerLogs,
   'docker ps': compressDockerPs,
+  'docker build': compressDockerBuild,
+
+  'npm install': compressPackageInstall,
+  'pnpm install': compressPackageInstall,
+  'yarn install': compressPackageInstall,
+  'bun install': compressPackageInstall,
+
+  'pip install': compressPythonInstall,
+  'poetry install': compressPythonInstall,
+
+  'terraform plan': compressTerraform,
+  'terraform apply': compressTerraform,
+
+  tsc: compressBuildOutput,
+  webpack: compressBuildOutput,
+  'vite build': compressBuildOutput,
+
+  make: compressMakeOutput,
+  'go test': compressGoTestOutput,
+  'git show': compressGitShow,
+  'npm run build': compressNpmRunBuild,
+  'pnpm run build': compressNpmRunBuild,
 
   grep: compressGrep,
   rg: (output: string) => compressGrepLike(output, 25, 2),
@@ -586,6 +945,13 @@ const WORD_BOUNDARY_MATCHERS: Partial<Record<CompressorKey, RegExp>> = {
   aws: /\baws\b/,
   kubectl: /\bkubectl\b/,
   gcp: /\b(gcloud|gcp)\b/,
+  tsc: /\btsc\b/,
+  webpack: /\bwebpack\b/,
+  make: /\bmake\b/,
+  'go test': /\bgo test\b/,
+  'git show': /\bgit show\b/,
+  'npm run build': /\bnpm run build\b/,
+  'pnpm run build': /\bpnpm run build\b/,
 };
 
 export function detectCommandType(cmd: string): CompressorKey | 'generic' {
@@ -602,22 +968,108 @@ export function detectCommandType(cmd: string): CompressorKey | 'generic' {
   return 'generic';
 }
 
-export function smartCompress(cmd: string, output: string): string {
-  if (!output.trim()) return output;
+export type CompressionLevel = 'light' | 'normal' | 'aggressive' | 'emergency';
 
-  const cleaned = removeNoise(output, 'aggressive');
+/** Hierarchical compression - apply stronger compression at higher levels */
+export function compressHierarchical(
+  cmd: string,
+  output: string,
+  level: CompressionLevel = 'normal'
+): { result: string; compressor: string } {
+  if (!output.trim()) return { result: output, compressor: 'none' };
+
   const type = detectCommandType(cmd);
-  let compressed = cleaned;
+  const format = detectOutputFormat(output);
+  let compressed = output;
+  let compressorUsed = 'generic';
 
-  if (type !== 'generic') {
-    compressed = compressors[type](compressed);
-  } else {
-    compressed = truncateLines(compressed, MAX_GENERIC_LINES);
+  // Level 1: Light - just noise removal
+  if (level === 'light') {
+    compressed = removeNoise(output, 'lite');
+    return { result: compressed, compressor: 'light' };
   }
 
-  compressed = dedupeLines(compressed, 2);
+  // Level 2: Normal - standard compression pipeline
+  if (level === 'normal') {
+    const cleaned = removeNoise(output, 'aggressive');
 
-  if (!compressed.trim()) return output;
+    if (type !== 'generic') {
+      compressed = compressors[type](cleaned);
+      compressorUsed = type;
+    } else if (format !== 'unknown') {
+      compressed = compressByFormat(cleaned, format);
+      compressorUsed = `auto:${format}`;
+    } else {
+      compressed = truncateLines(cleaned, MAX_GENERIC_LINES);
+      compressorUsed = 'generic';
+    }
 
-  return compressed;
+    compressed = dedupeLinesSmart(compressed, 2);
+
+    // Fail-safe: return original if compression resulted in empty output
+    if (!compressed.trim()) {
+      return { result: output, compressor: 'failsafe' };
+    }
+
+    return { result: compressed, compressor: compressorUsed };
+  }
+
+  // Level 3: Aggressive - prioritize important lines
+  if (level === 'aggressive') {
+    const cleaned = removeNoise(output, 'aggressive');
+
+    if (type !== 'generic') {
+      compressed = compressors[type](cleaned);
+      compressorUsed = type;
+    } else if (format !== 'unknown') {
+      compressed = compressByFormat(cleaned, format);
+      compressorUsed = `auto:${format}`;
+    } else {
+      compressed = selectImportantLines(cleaned, 50);
+      compressorUsed = 'generic:scored';
+    }
+
+    compressed = dedupeLinesSmart(compressed, 2);
+    return { result: compressed, compressor: `${compressorUsed}:aggressive` };
+  }
+
+  // Level 4: Emergency - only errors, warnings, and critical info
+  if (level === 'emergency') {
+    const lines = output.split('\n');
+    const critical = lines.filter((line) => {
+      const _lower = line.toLowerCase();
+      return (
+        /\b(error|fatal|critical|fail|failed|exception|panic|warn|warning)\b/i.test(line) ||
+        /\b(summary|result|total|completed|success)\b/i.test(line)
+      );
+    });
+
+    if (critical.length === 0) {
+      return {
+        result: '[tokviz:emergency] No errors or warnings. Command completed.',
+        compressor: 'emergency:summary',
+      };
+    }
+
+    compressed = selectImportantLines(critical.join('\n'), 20);
+    return { result: compressed, compressor: 'emergency' };
+  }
+
+  return { result: output, compressor: 'none' };
+}
+
+export function smartCompress(cmd: string, output: string): { result: string; compressor: string } {
+  const { tokens, lines } = estimateOutputSize(output);
+  let level = resolveCompressionLevel(tokens, lines);
+  let result = compressHierarchical(cmd, output, level);
+
+  if (shouldEscalateCompression(tokens, estimateTokens(result.result), level)) {
+    level = nextCompressionLevel(level);
+    const escalated = compressHierarchical(cmd, output, level);
+    if (estimateTokens(escalated.result) < estimateTokens(result.result)) {
+      result = escalated;
+    }
+  }
+
+  return result;
 }

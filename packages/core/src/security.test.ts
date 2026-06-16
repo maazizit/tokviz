@@ -19,9 +19,7 @@ describe('redactSecrets', () => {
   });
 
   it('redacts AWS and GitHub tokens', () => {
-    const out = redactSecrets(
-      'aws=AKIAIOSFODNN7EXAMPLE\nghp_abcdefghijklmnopqrstuvwxyz123456'
-    );
+    const out = redactSecrets('aws=AKIAIOSFODNN7EXAMPLE\nghp_abcdefghijklmnopqrstuvwxyz123456');
     assert.match(out, /AKIA\[REDACTED\]/);
     assert.match(out, /ghp_\[REDACTED\]/);
     assert.doesNotMatch(out, /EXAMPLE/);
@@ -94,7 +92,7 @@ describe('security pipeline', () => {
       '+const api_key = "sk-abcdefghijklmnopqrstuvwxyz12";',
       '+export const x = 1;',
     ].join('\n');
-    const out = smartCompress('git diff', raw);
+    const _out = smartCompress('git diff', raw);
     const result = compressShellOutput('git diff', raw);
     assert.doesNotMatch(result.output, /sk-abcdefghijklmnopqrstuvwxyz12/);
     assert.match(result.output, /\[REDACTED\]|sk-\[REDACTED\]/);
@@ -120,10 +118,7 @@ describe('isSecurityCriticalLine', () => {
 
 describe('looksLikeEnvFile', () => {
   it('detects KEY=value files', () => {
-    assert.equal(
-      looksLikeEnvFile('FOO=1\nBAR=2\n# comment'),
-      true
-    );
+    assert.equal(looksLikeEnvFile('FOO=1\nBAR=2\n# comment'), true);
     assert.equal(looksLikeEnvFile('hello world\nfoo bar'), false);
   });
 });

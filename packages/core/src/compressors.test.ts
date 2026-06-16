@@ -61,11 +61,9 @@ describe('detectCommandType', () => {
 describe('smartCompress', () => {
   it('collapses large unified diff deletion blocks', () => {
     const deletions = Array.from({ length: 20 }, (_, i) => `-removed line ${i}`).join('\n');
-    const raw = ['diff --git a/x.ts b/x.ts', '@@ -1,5 +1,1 @@', deletions, '+added'].join(
-      '\n'
-    );
+    const raw = ['diff --git a/x.ts b/x.ts', '@@ -1,5 +1,1 @@', deletions, '+added'].join('\n');
 
-    const out = smartCompress('git diff', raw);
+    const { result: out } = smartCompress('git diff', raw);
     assert.match(out, /deletions omitted/);
     assert.ok(!out.includes('removed line 19'));
   });
@@ -82,7 +80,7 @@ describe('smartCompress', () => {
       '+1 -1',
     ].join('\n');
 
-    const out = smartCompress('git diff', raw);
+    const { result: out } = smartCompress('git diff', raw);
     assert.ok(out.includes('@@'));
     assert.ok(out.includes('+added'));
     assert.ok(out.includes('-removed'));
@@ -105,7 +103,7 @@ describe('smartCompress', () => {
       '?? u4',
     ].join('\n');
 
-    const out = smartCompress('git status', raw);
+    const { result: out } = smartCompress('git status', raw);
     assert.ok(!out.includes('git add'));
     assert.match(out, /more tracked files/);
     assert.match(out, /Untracked:.*4 files/);
@@ -123,7 +121,7 @@ describe('smartCompress', () => {
       '+new line',
     ].join('\n');
 
-    const out = smartCompress('git diff', raw);
+    const { result: out } = smartCompress('git diff', raw);
     assert.ok(out.includes('@@'));
     assert.ok(out.includes('-old line'));
     assert.ok(out.includes('+new line'));
@@ -139,7 +137,7 @@ describe('smartCompress', () => {
       'test result: ok. 3 passed; 0 failed',
     ].join('\n');
 
-    const out = smartCompress('cargo test', raw);
+    const { result: out } = smartCompress('cargo test', raw);
     assert.equal(out, 'test result: ok. 3 passed; 0 failed');
     assert.ok(!out.includes('test foo'));
   });
@@ -154,7 +152,7 @@ describe('smartCompress', () => {
       'Tests: 1 failed, 3 passed, 4 total',
     ].join('\n');
 
-    const out = smartCompress('npm test', raw);
+    const { result: out } = smartCompress('npm test', raw);
     assert.ok(out.includes('FAIL'));
     assert.ok(out.includes('Error: boom'));
     assert.ok(!out.includes('PASS src/a'));
@@ -171,7 +169,7 @@ describe('smartCompress', () => {
       'src/b.ts:12:detectCommandType(z)',
     ].join('\n');
 
-    const out = smartCompress('rg smartCompress', raw);
+    const { result: out } = smartCompress('rg smartCompress', raw);
     assert.match(out, /src\/a\.ts: \(3 matches\)/);
     assert.ok(!out.includes('src/a.ts:30'));
   });
@@ -182,7 +180,7 @@ describe('smartCompress', () => {
       '2026-06-11T14:33:00.000Z ERROR: database connection failed',
       '2026-06-11T14:33:01.000Z WARN: retrying connection',
     ].join('\n');
-    const out = smartCompress('docker logs mycontainer', raw);
+    const { result: out } = smartCompress('docker logs mycontainer', raw);
     assert.match(out, /ERROR: database connection failed/);
     assert.match(out, /WARN: retrying connection/);
     assert.ok(!out.includes('Server started'));
@@ -190,7 +188,7 @@ describe('smartCompress', () => {
 
   it('truncates long cat output with head/tail summary', () => {
     const raw = Array.from({ length: 120 }, (_, i) => `line ${i}`).join('\n');
-    const out = smartCompress('cat big.log', raw);
+    const { result: out } = smartCompress('cat big.log', raw);
     assert.match(out, /lines omitted/);
     assert.ok(out.includes('line 0'));
     assert.ok(out.includes('line 119'));
@@ -201,7 +199,7 @@ describe('smartCompress', () => {
     const header = 'NAME   READY   STATUS';
     const rows = Array.from({ length: 20 }, (_, i) => `pod-${i}   1/1   Running`);
     const raw = [header, ...rows].join('\n');
-    const out = smartCompress('kubectl get pods', raw);
+    const { result: out } = smartCompress('kubectl get pods', raw);
     assert.match(out, /more rows/);
     assert.ok(out.includes('pod-0'));
     assert.ok(!out.includes('pod-19'));
@@ -213,32 +211,29 @@ describe('smartCompress', () => {
       State: 'running',
     }));
     const raw = JSON.stringify(items);
-    const out = smartCompress('aws ec2 describe-instances', raw);
+    const { result: out } = smartCompress('aws ec2 describe-instances', raw);
     assert.match(out, /30 items/);
     assert.ok(!raw.includes('i-29') || !out.includes('i-29'));
   });
 
   it('compresses curl http response body', () => {
-    const raw = [
-      'HTTP/1.1 200 OK',
-      'Content-Type: application/json',
-      '',
-      'x'.repeat(800),
-    ].join('\n');
-    const out = smartCompress('curl -s https://api.example.com', raw);
+    const raw = ['HTTP/1.1 200 OK', 'Content-Type: application/json', '', 'x'.repeat(800)].join(
+      '\n'
+    );
+    const { result: out } = smartCompress('curl -s https://api.example.com', raw);
     assert.match(out, /body chars omitted/);
   });
 
   it('aggressively groups grep matches', () => {
     const raw = Array.from({ length: 10 }, (_, i) => `src/a.ts:${i}:match`).join('\n');
-    const out = smartCompress('grep match src/', raw);
+    const { result: out } = smartCompress('grep match src/', raw);
     assert.match(out, /10 matches/);
     assert.ok(!out.includes('src/a.ts:9'));
   });
 
   it('fail-safe returns raw when filter would empty output', () => {
     const raw = Array.from({ length: 50 }, (_, i) => `plain ${i}`).join('\n');
-    const out = smartCompress('git diff', raw);
+    const { result: out } = smartCompress('git diff', raw);
     assert.equal(out, raw);
   });
 });
@@ -248,7 +243,7 @@ describe('compression ratio', () => {
     const passed = Array.from({ length: 40 }, (_, i) => `test case_${i} ... ok`).join('\n');
     const raw = `${passed}\ntest result: ok. 40 passed; 0 failed`;
 
-    const out = smartCompress('cargo test', raw);
+    const { result: out } = smartCompress('cargo test', raw);
     assert.ok(savingsPercent(raw, out) >= 90);
   });
 
@@ -256,7 +251,7 @@ describe('compression ratio', () => {
     const line = '2026-06-11T14:32:00.123Z INFO: request handled';
     const raw = Array.from({ length: 30 }, () => line).join('\n');
 
-    const out = smartCompress('docker logs api', raw);
+    const { result: out } = smartCompress('docker logs api', raw);
     assert.ok(savingsPercent(raw, out) >= 90);
   });
 
@@ -273,7 +268,7 @@ describe('compression ratio', () => {
       '+added',
     ].join('\n');
 
-    const out = smartCompress('git diff', raw);
+    const { result: out } = smartCompress('git diff', raw);
     assert.ok(savingsPercent(raw, out) >= 70);
     assert.ok(!out.includes('diff --git'));
   });
@@ -302,9 +297,7 @@ describe('compression ratio', () => {
       },
       {
         cmd: 'docker logs api',
-        raw: Array.from({ length: 20 }, () => '2026-06-11T14:32:00.123Z INFO: handled').join(
-          '\n'
-        ),
+        raw: Array.from({ length: 20 }, () => '2026-06-11T14:32:00.123Z INFO: handled').join('\n'),
       },
       {
         cmd: 'npm test',
@@ -329,7 +322,7 @@ describe('compression ratio', () => {
     let active = 0;
 
     for (const { cmd, raw } of scenarios) {
-      const out = smartCompress(cmd, raw);
+      const { result: out } = smartCompress(cmd, raw);
       const rawTokens = estimateTokens(raw);
       const outTokens = estimateTokens(out);
       rawTotal += rawTokens;
@@ -349,7 +342,7 @@ describe('compression ratio', () => {
       (_, i) => `pod-worker-${i}-abc1234567-xyz   1/1   Running   0   ${i}d`
     );
     const raw = [header, ...rows].join('\n');
-    const out = smartCompress('kubectl get pods', raw);
+    const { result: out } = smartCompress('kubectl get pods', raw);
     assert.ok(savingsPercent(raw, out) >= 70);
   });
 
@@ -361,7 +354,7 @@ describe('compression ratio', () => {
       Tags: [{ Key: 'Name', Value: `worker-${i}` }],
     }));
     const raw = JSON.stringify(items);
-    const out = smartCompress('aws ec2 describe-instances --output json', raw);
+    const { result: out } = smartCompress('aws ec2 describe-instances --output json', raw);
     assert.ok(savingsPercent(raw, out) >= 80);
   });
 
@@ -372,7 +365,7 @@ describe('compression ratio', () => {
       (_, i) => `vm-${i}   us-central1-a   n1-standard-1   RUNNING`
     );
     const raw = [header, ...rows].join('\n');
-    const out = smartCompress('gcloud compute instances list', raw);
+    const { result: out } = smartCompress('gcloud compute instances list', raw);
     assert.ok(savingsPercent(raw, out) >= 60);
   });
 
@@ -380,18 +373,20 @@ describe('compression ratio', () => {
     const header = 'CONTAINER ID   IMAGE   COMMAND   CREATED   STATUS   PORTS   NAMES';
     const rows = Array.from(
       { length: 30 },
-      (_, i) => `abc${i.toString().padStart(9, '0')}   nginx   "/docker-entrypoint"   2 days ago   Up 2 days   80/tcp   web-${i}`
+      (_, i) =>
+        `abc${i.toString().padStart(9, '0')}   nginx   "/docker-entrypoint"   2 days ago   Up 2 days   80/tcp   web-${i}`
     );
     const raw = [header, ...rows].join('\n');
-    const out = smartCompress('docker ps', raw);
+    const { result: out } = smartCompress('docker ps', raw);
     assert.ok(savingsPercent(raw, out) >= 65);
   });
 
   it('achieves >=85% on grep output', () => {
-    const raw = Array.from({ length: 40 }, (_, i) => `src/lib.ts:${i}:export function foo${i}()`).join(
-      '\n'
-    );
-    const out = smartCompress('grep foo src/', raw);
+    const raw = Array.from(
+      { length: 40 },
+      (_, i) => `src/lib.ts:${i}:export function foo${i}()`
+    ).join('\n');
+    const { result: out } = smartCompress('grep foo src/', raw);
     assert.ok(savingsPercent(raw, out) >= 85);
   });
 
@@ -406,13 +401,13 @@ describe('compression ratio', () => {
       '',
       'x'.repeat(5000),
     ].join('\n');
-    const out = smartCompress('curl -v https://api.example.com/data', raw);
+    const { result: out } = smartCompress('curl -v https://api.example.com/data', raw);
     assert.ok(savingsPercent(raw, out) >= 70);
   });
 
   it('achieves >=75% on long cat output', () => {
     const raw = Array.from({ length: 200 }, (_, i) => `export const item${i} = ${i};`).join('\n');
-    const out = smartCompress('cat src/items.ts', raw);
+    const { result: out } = smartCompress('cat src/items.ts', raw);
     assert.ok(savingsPercent(raw, out) >= 75);
   });
 });

@@ -58,7 +58,19 @@ export function buildRecommendations(
   if (globalIn > 0 && (proseIn / globalIn) * 100 > 40) {
     recommendations.push({
       severity: 'action',
-      message: 'Prose > 40 % des tokens IN. Active le mode `/tokviz full` ou `/tokviz lite` pour réduire les réponses.',
+      message:
+        'Prose > 40 % des tokens IN. Active `/tokviz full` ou installe les rules prose (tokviz init --prose full --workspace .).',
+    });
+  }
+
+  const mcpIn = events
+    .filter((event) => event.source === 'mcp')
+    .reduce((sum, event) => sum + event.tokensRaw, 0);
+  if (globalIn > 0 && (mcpIn / globalIn) * 100 > 25) {
+    recommendations.push({
+      severity: 'action',
+      message:
+        'MCP > 25 % des tokens IN. Lance `tokviz audit-mcp` et désactive les serveurs MCP inutilisés.',
     });
   }
 
@@ -70,7 +82,9 @@ export function buildRecommendations(
     });
   }
 
-  const lowSavingsSessions = sessions.filter((session) => session.savingsPercent < 15 && session.tokensIn > 500);
+  const lowSavingsSessions = sessions.filter(
+    (session) => session.savingsPercent < 15 && session.tokensIn > 500
+  );
   if (lowSavingsSessions.length > 0) {
     const sample = lowSavingsSessions[0].sessionId.slice(0, 12);
     recommendations.push({
@@ -104,7 +118,8 @@ export function buildRecommendations(
   if (recommendations.length === 0) {
     recommendations.push({
       severity: 'info',
-      message: 'Consommation stable. Continue à exporter `tokviz stats --json` pour suivre l’évolution.',
+      message:
+        'Consommation stable. Continue à exporter `tokviz stats --json` pour suivre l’évolution.',
     });
   }
 

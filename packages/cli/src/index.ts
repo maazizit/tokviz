@@ -2,6 +2,7 @@
 
 import { readFileSync } from 'node:fs';
 import { runInit, type AgentName } from './commands/init.js';
+import { runAuditMcp } from './commands/audit-mcp.js';
 import { runHook } from './commands/hook.js';
 import { runStats } from './commands/stats.js';
 import { runGain } from './commands/gain.js';
@@ -10,7 +11,14 @@ import { runUninstall } from './commands/uninstall.js';
 import { runReport } from './commands/report.js';
 import { runCompareCommand } from './commands/compare.js';
 import { runBenchReport } from './commands/bench.js';
-import { formatBenchReport } from '@tokviz/core';
+import {
+  formatBenchReport,
+  TokVizError,
+  ConfigError,
+  DataError,
+  FileSystemError,
+  ValidationError,
+} from '@tokviz/core';
 import { parseTrailingFlags } from './args.js';
 import type { Agent } from '@tokviz/core';
 
@@ -26,13 +34,15 @@ Usage:
   tokviz report [options]
   tokviz compare [sessionA sessionB] [options]
   tokviz doctor
+  tokviz audit-mcp [--json] [--workspace <dir>]
   tokviz hook                    # called by agent hooks (stdin JSON)
   tokviz uninstall -g --agent <cursor|copilot|gemini>
 
 Init options:
   -g, --global          Install hooks globally (~/.cursor, ~/.copilot, ~/.gemini)
   --agent <name>        Target agent (default: cursor)
-  --prose <lite|full|ultra|off>   Install prose compression skills (project scope)
+  --prose <lite|full|ultra|off>   Install prose compression (default: off)
+  --workspace <dir>       Project root for prose rules / copilot-instructions
   --enterprise          Metrics only, no command content logged
   --track-only          Track tokens, no shell compression
 
@@ -81,6 +91,7 @@ async function main(): Promise<void> {
         global: !!flags.global,
         agent,
         prose: flags.prose as 'lite' | 'full' | 'ultra' | 'off' | undefined,
+        workspace: flags.workspace as string | undefined,
         enterprise: !!flags.enterprise,
         trackOnly: !!flags.trackOnly,
       });
@@ -150,6 +161,14 @@ async function main(): Promise<void> {
     case 'doctor':
       console.log(runDoctor());
       break;
+    case 'audit-mcp':
+      console.log(
+        runAuditMcp({
+          json: !!flags.json,
+          workspace: flags.workspace as string | undefined,
+        })
+      );
+      break;
     case 'hook': {
       const stdin = readFileSync(0, 'utf8');
       const out = await runHook(stdin);
@@ -169,6 +188,37 @@ async function main(): Promise<void> {
 }
 
 main().catch((err) => {
-  console.error(err);
+  // Provide helpful error messages based on error type
+  if (err instanceof ConfigError) {
+    console.error(`❌ Configuration Error: ${err.message}`);
+    if (err.path) {
+      console.error(`   File: ${err.path}`);
+    }
+    console.error(`   Try running: tokviz init -g --agent <cursor|copilot|gemini>`);
+  } else if (err instanceof DataError) {
+    console.error(`❌ Data Error: ${err.message}`);
+    if (err.path) {
+      console.error(`   File: ${err.path}`);
+    }
+    console.error(`   Your data file may be corrupted. Check ~/.tokviz/events.json`);
+  } else if (err instanceof FileSystemError) {
+    console.error(`❌ File System Error: ${err.message}`);
+    if (err.path) {
+      console.error(`   Path: ${err.path}`);
+    }
+    console.error(`   Check permissions and disk space`);
+  } else if (err instanceof ValidationError) {
+    console.error(`❌ Validation Error: ${err.message}`);
+    if (err.field) {
+      console.error(`   Field: ${err.field}`);
+    }
+  } else if (err instanceof TokVizError) {
+    console.error(`❌ TokViz Error: ${err.message}`);
+  } else {
+    console.error(`❌ Unexpected Error: ${err.message || err}`);
+    if (err.stack) {
+      console.error(`\nStack trace:\n${err.stack}`);
+    }
+  }
   process.exit(1);
 });

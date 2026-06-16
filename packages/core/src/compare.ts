@@ -1,7 +1,4 @@
-import {
-  getAllEvents,
-  getSessionStatsForEvents,
-} from './db.js';
+import { getAllEvents, getSessionStatsForEvents } from './db.js';
 import { filterEvents, type EventFilter } from './filters.js';
 import type { SessionStats } from './types.js';
 
@@ -150,7 +147,8 @@ export function runCompare(opts: CompareOptions = {}): CompareResult {
     const others = rows.filter((row) => row.sessionId !== opts.sessions![0]);
     const medianIn =
       others.length > 0
-        ? [...others].sort((a, b) => a.tokensIn - b.tokensIn)[Math.floor(others.length / 2)].tokensIn
+        ? [...others].sort((a, b) => a.tokensIn - b.tokensIn)[Math.floor(others.length / 2)]
+            .tokensIn
         : 0;
 
     const baselineRow: SessionCompareRow = {
@@ -282,7 +280,15 @@ export function formatCompareTerminal(result: CompareResult): string {
   if (result.rows.length > 0) {
     lines.push(
       padRow(['SESSION', 'AGENT', 'IN', 'OUT', 'SAVED', '%', 'SCORE']),
-      padRow(['─'.repeat(12), '─'.repeat(8), '─'.repeat(8), '─'.repeat(8), '─'.repeat(8), '─'.repeat(5), '─'.repeat(8)])
+      padRow([
+        '─'.repeat(12),
+        '─'.repeat(8),
+        '─'.repeat(8),
+        '─'.repeat(8),
+        '─'.repeat(8),
+        '─'.repeat(5),
+        '─'.repeat(8),
+      ])
     );
 
     for (const row of result.rows) {
@@ -321,9 +327,13 @@ export function formatCompareMarkdown(result: CompareResult): string {
   if (result.rows.length === 2) {
     const [a, b] = result.rows;
     if (a.savingsPercent > b.savingsPercent + 5) {
-      lines.push(`Verdict: Session \`${a.sessionId.slice(0, 12)}…\` économise plus (${a.savingsPercent}% vs ${b.savingsPercent}%).`);
+      lines.push(
+        `Verdict: Session \`${a.sessionId.slice(0, 12)}…\` économise plus (${a.savingsPercent}% vs ${b.savingsPercent}%).`
+      );
     } else if (b.savingsPercent > a.savingsPercent + 5) {
-      lines.push(`Verdict: Session \`${b.sessionId.slice(0, 12)}…\` économise plus (${b.savingsPercent}% vs ${a.savingsPercent}%).`);
+      lines.push(
+        `Verdict: Session \`${b.sessionId.slice(0, 12)}…\` économise plus (${b.savingsPercent}% vs ${a.savingsPercent}%).`
+      );
     }
   }
   return lines.join('\n');

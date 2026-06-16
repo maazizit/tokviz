@@ -1,5 +1,6 @@
 import { recordEvent } from './db.js';
 import { compressShellOutput } from './compressor/shell.js';
+import { compressToolOutput } from './compressor/tool.js';
 import { detectCommandType } from './compressors.js';
 import { estimateTokens, redactSecrets } from './tokens.js';
 import type { Agent, EventSource } from './types.js';
@@ -44,6 +45,7 @@ export function trackShellOutput(input: {
     source: 'shell',
     toolName: 'Shell',
     command: safeCommand,
+    compressor: result.compressor,
     tokensRaw: result.tokensRaw,
     tokensOptimized: result.tokensOptimized,
     metadata: { compressed: result.compressed, commandType },
@@ -90,4 +92,48 @@ export function trackToolUse(input: {
     tokensRaw: raw + out,
     tokensOptimized: raw + out,
   });
+}
+
+export function trackToolOutput(input: {
+  sessionId: string;
+  agent: Agent;
+  toolName: string;
+  output: string;
+  source?: 'mcp' | 'tool';
+  trackOnly?: boolean;
+}): { output: string; saved: number } {
+  const config = getConfig();
+  const trackOnly = input.trackOnly ?? config.trackOnly;
+  const safeOutput = redactSecrets(input.output);
+  const source = input.source ?? 'tool';
+
+  if (trackOnly) {
+    const tokens = estimateTokens(safeOutput);
+    recordEvent({
+      sessionId: input.sessionId,
+      agent: input.agent,
+      source,
+      toolName: input.toolName,
+      tokensRaw: tokens,
+      tokensOptimized: tokens,
+    });
+    return { output: input.output, saved: 0 };
+  }
+
+  const result = compressToolOutput(input.toolName, safeOutput);
+  recordEvent({
+    sessionId: input.sessionId,
+    agent: input.agent,
+    source,
+    toolName: input.toolName,
+    compressor: result.compressor,
+    tokensRaw: result.tokensRaw,
+    tokensOptimized: result.tokensOptimized,
+    metadata: { compressed: result.compressed },
+  });
+
+  return {
+    output: result.compressed ? result.output : input.output,
+    saved: result.tokensRaw - result.tokensOptimized,
+  };
 }

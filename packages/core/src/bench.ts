@@ -58,11 +58,8 @@ export function loadFixtures(fixturesDir = defaultFixturesDir()): BenchFixture[]
   }));
 }
 
-export function benchFixture(
-  fixture: BenchFixture,
-  targetPercent = DEFAULT_TARGET
-): BenchRow {
-  const compressed = smartCompress(fixture.command, fixture.output);
+export function benchFixture(fixture: BenchFixture, targetPercent = DEFAULT_TARGET): BenchRow {
+  const { result: compressed } = smartCompress(fixture.command, fixture.output);
   const tokensRaw = estimateTokens(fixture.output);
   const tokensOut = estimateTokens(compressed);
   const savingsPercent =
@@ -88,9 +85,7 @@ export function runBenchmark(
   const totalTokensRaw = rows.reduce((sum, r) => sum + r.tokensRaw, 0);
   const totalTokensOut = rows.reduce((sum, r) => sum + r.tokensOut, 0);
   const totalSavingsPercent =
-    totalTokensRaw > 0
-      ? Math.round(((totalTokensRaw - totalTokensOut) / totalTokensRaw) * 100)
-      : 0;
+    totalTokensRaw > 0 ? Math.round(((totalTokensRaw - totalTokensOut) / totalTokensRaw) * 100) : 0;
 
   const meaningful = rows.filter((r) => r.tokensRaw >= 50);
   const pass =

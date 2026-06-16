@@ -188,7 +188,7 @@ export function copilotVsCodeHooksPayload(agent: string): VsCodeHooksFile {
 
 export function mergeCopilotVsCodeHooks(
   targetPath: string,
-  incoming: VsCodeHooksFile,
+  incoming: VsCodeHooksFile
 ): { path: string; merged: boolean } {
   mkdirSync(dirname(targetPath), { recursive: true });
   let existing: VsCodeHooksFile = { hooks: {} };

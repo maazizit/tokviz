@@ -7,6 +7,7 @@ export interface CompressResult {
   tokensRaw: number;
   tokensOptimized: number;
   compressed: boolean;
+  compressor?: string;
 }
 
 export function compressShellOutput(command: string, output: string): CompressResult {
@@ -20,14 +21,16 @@ export function compressShellOutput(command: string, output: string): CompressRe
     return { output: safe, tokensRaw, tokensOptimized: tokensRaw, compressed: false };
   }
 
-  const compressed = redactSecrets(smartCompress(command, safe));
-  const tokensOptimized = estimateTokens(compressed);
-  const didCompress = compressed !== safe && tokensOptimized < tokensRaw;
+  const { result: compressed, compressor } = smartCompress(command, safe);
+  const compressedSafe = redactSecrets(compressed);
+  const tokensOptimized = estimateTokens(compressedSafe);
+  const didCompress = compressedSafe !== safe && tokensOptimized < tokensRaw;
 
   return {
-    output: didCompress ? compressed : safe,
+    output: didCompress ? compressedSafe : safe,
     tokensRaw,
     tokensOptimized: didCompress ? tokensOptimized : tokensRaw,
     compressed: didCompress,
+    compressor: didCompress ? compressor : undefined,
   };
 }
